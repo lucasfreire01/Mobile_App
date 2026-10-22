@@ -9,11 +9,6 @@ export type GatewayVpnResources = {
   ipServiceId: string
 }
 
-/**
- * Client for the CloudConnexa Public API v1.
- * Each gateway gets its own Network + Connector + IP Service (/32),
- * because connectors inside the same Network are treated as HA replicas.
- */
 export default class CloudConnexaService {
   // Shared across instances: token is valid for ~12h
   private static token: TokenCache | null = null
@@ -98,13 +93,22 @@ export default class CloudConnexaService {
         }
       )
 
+      const accessGroupId = env.get('CLOUDCONNEXA_ACCESS_GROUP_ID')
+      if (accessGroupId) {
+        await this.request('POST', `/api/v1/access-groups/${accessGroupId}/destination`, {
+          type: 'NETWORK_SERVICE',
+          parent: network.id,
+          allCovered: true,
+        })
+      }
+
       return {
         networkId: network.id,
         connectorId: network.connectors[0].id,
         ipServiceId: ipService.id,
       }
     } catch (err) {
-      await this.deleteNetwork(network.id).catch(() => {})
+      await this.deleteNetwork(network.id).catch(() => { })
       throw err
     }
   }
@@ -122,5 +126,17 @@ export default class CloudConnexaService {
   /** Deletes the Network (and its connectors / IP services). */
   async deleteNetwork(networkId: string): Promise<void> {
     await this.request('DELETE', `/api/v1/networks/${networkId}`)
+  }
+
+  /**
+   * Updates the routes of an existing IP service.
+   * Cloud Connexa expects an array of route objects with a `value` field.
+   * This method replaces the current routes with the provided list.
+   */
+  async updateIpServiceRoutes(ipServiceId: string, routes: string[]): Promise<void> {
+    const body = {
+      routes: routes.map((r) => ({ value: r })),
+    }
+    await this.request('PATCH', `/api/v1/networks/ip-services/${ipServiceId}`, body)
   }
 }

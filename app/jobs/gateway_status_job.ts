@@ -19,6 +19,12 @@ export default class GatewayStatusJob {
           await sshService.ping(gateway)
           gateway.status = 'online'
           gateway.lastSeenAt = DateTime.now()
+
+          const wanIp = await sshService.getCurrentWanIp(gateway)
+          if (wanIp) {
+            gateway.wanIpAddress = wanIp
+            gateway.wanIpObservedAt = DateTime.now()
+          }
         } catch {
           gateway.status = 'offline'
         }

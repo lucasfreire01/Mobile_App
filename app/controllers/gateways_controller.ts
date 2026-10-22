@@ -1,4 +1,5 @@
 import Gateway from '#models/gateway'
+import GatewayNetworkOperation from '#models/gateway_network_operation'
 import CloudConnexaService from '#services/cloud_connexa_service'
 import GatewayService from '#services/gateway_service'
 import { createGatewayValidator } from '#validators/gateway'
@@ -80,6 +81,16 @@ export default class GatewaysController {
       gateway,
     })
   }
+
+  async networkOperations({ params, response }: HttpContext) {
+    const gateway = await Gateway.findOrFail(params.id)
+    const operations = await GatewayNetworkOperation.query()
+      .where('gateway_id', gateway.id)
+      .orderBy('created_at', 'desc')
+
+    return response.ok({ operations })
+  }
+
   async edit() {}
 
   /**

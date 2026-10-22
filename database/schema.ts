@@ -33,22 +33,69 @@ export class AuthAccessTokenSchema extends BaseModel {
 }
 
 export class GatewayEthernetConfigSchema extends BaseModel {
-  static $columns = ['createdAt', 'gatewayId', 'id', 'mode', 'updatedAt'] as const
+  static $columns = ['createdAt', 'dhcpFallbackEnabled', 'gatewayId', 'id', 'mode', 'primaryDns', 'secondaryDns', 'staticGateway', 'staticIpAddress', 'staticPrefixLength', 'updatedAt'] as const
   $columns = GatewayEthernetConfigSchema.$columns
   @column.dateTime({ autoCreate: true })
   declare createdAt: DateTime | null
+  @column()
+  declare dhcpFallbackEnabled: boolean
   @column()
   declare gatewayId: number
   @column({ isPrimary: true })
   declare id: number
   @column()
   declare mode: string
+  @column()
+  declare primaryDns: string | null
+  @column()
+  declare secondaryDns: string | null
+  @column()
+  declare staticGateway: string | null
+  @column()
+  declare staticIpAddress: string | null
+  @column()
+  declare staticPrefixLength: number | null
   @column.dateTime({ autoCreate: true, autoUpdate: true })
   declare updatedAt: DateTime | null
 }
 
+export class GatewayNetworkOperationSchema extends BaseModel {
+  static $columns = ['action', 'attempts', 'availableAt', 'createdAt', 'errorCode', 'errorMessage', 'finishedAt', 'gatewayId', 'id', 'payload', 'processingExpiresAt', 'processingToken', 'startedAt', 'status', 'updatedAt'] as const
+  $columns = GatewayNetworkOperationSchema.$columns
+  @column()
+  declare action: string
+  @column()
+  declare attempts: number
+  @column.dateTime()
+  declare availableAt: DateTime | null
+  @column.dateTime({ autoCreate: true })
+  declare createdAt: DateTime
+  @column()
+  declare errorCode: string | null
+  @column()
+  declare errorMessage: string | null
+  @column.dateTime()
+  declare finishedAt: DateTime | null
+  @column()
+  declare gatewayId: number
+  @column({ isPrimary: true })
+  declare id: number
+  @column()
+  declare payload: any | null
+  @column.dateTime()
+  declare processingExpiresAt: DateTime | null
+  @column()
+  declare processingToken: string | null
+  @column.dateTime()
+  declare startedAt: DateTime | null
+  @column()
+  declare status: string
+  @column.dateTime({ autoCreate: true, autoUpdate: true })
+  declare updatedAt: DateTime
+}
+
 export class GatewaySchema extends BaseModel {
-  static $columns = ['ccConnectorId', 'ccIpServiceId', 'ccNetworkId', 'createdAt', 'gatewayEui', 'id', 'lanIpAddress', 'lanIpObservedAt', 'lastSeenAt', 'location', 'managementIpAddress', 'name', 'status', 'updatedAt'] as const
+  static $columns = ['ccConnectorId', 'ccIpServiceId', 'ccNetworkId', 'createdAt', 'gatewayEui', 'id', 'lastSeenAt', 'location', 'managementIpAddress', 'name', 'networkLockExpiresAt', 'networkLockToken', 'status', 'updatedAt', 'wanIpAddress', 'wanIpObservedAt'] as const
   $columns = GatewaySchema.$columns
   @column()
   declare ccConnectorId: string | null
@@ -62,10 +109,6 @@ export class GatewaySchema extends BaseModel {
   declare gatewayEui: string | null
   @column({ isPrimary: true })
   declare id: number
-  @column()
-  declare lanIpAddress: string | null
-  @column.dateTime()
-  declare lanIpObservedAt: DateTime | null
   @column.dateTime()
   declare lastSeenAt: DateTime | null
   @column()
@@ -74,10 +117,18 @@ export class GatewaySchema extends BaseModel {
   declare managementIpAddress: string | null
   @column()
   declare name: string | null
+  @column.dateTime()
+  declare networkLockExpiresAt: DateTime | null
+  @column()
+  declare networkLockToken: string | null
   @column()
   declare status: string
   @column.dateTime({ autoCreate: true, autoUpdate: true })
   declare updatedAt: DateTime | null
+  @column()
+  declare wanIpAddress: string | null
+  @column.dateTime()
+  declare wanIpObservedAt: DateTime | null
 }
 
 export class UserSchema extends BaseModel {

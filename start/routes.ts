@@ -36,7 +36,15 @@ router
       .use(middleware.auth())
 
     router
+      .get('gateways/:id/network-operations', [controllers.Gateways, 'networkOperations'])
+      .use(middleware.auth())
+
+    router
       .get('gateways/:id/ethernet/device', [controllers.GatewayEthernets, 'device'])
+      .use(middleware.auth())
+
+    router
+      .post('gateways/:id/ethernet/apply', [controllers.GatewayEthernets, 'apply'])
       .use(middleware.auth())
 
     router
