@@ -5,6 +5,7 @@ import { controllers } from '#generated/controllers'
 router.get('/', () => {
   return { hello: 'world' }
 })
+router.get('/health', [controllers.Health, 'show'])
 
 router
   .group(() => {
@@ -52,5 +53,6 @@ router
       .apiOnly()
       .only(['index', 'store', 'show', 'update'])
       .use('*', middleware.auth())
+    router.get('health/queue', [controllers.QueueHealths, 'show']).use(middleware.auth())
   })
   .prefix('/api/v1')

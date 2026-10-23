@@ -40,9 +40,19 @@ export const plugins: Config['plugins'] = [
  * The setup functions are executed before all the tests
  * The teardown functions are executed after all the tests
  */
+let rollbackTestDatabase: (() => Promise<void>) | undefined
+
 export const runnerHooks: Required<Pick<Config, 'setup' | 'teardown'>> = {
-  setup: [],
-  teardown: [],
+  setup: [
+    async () => {
+      rollbackTestDatabase = await testUtils.db().migrate()
+    },
+  ],
+  teardown: [
+    async () => {
+      await rollbackTestDatabase?.()
+    },
+  ],
 }
 
 /**

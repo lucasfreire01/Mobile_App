@@ -147,3 +147,16 @@ export class UserSchema extends BaseModel {
   @column.dateTime({ autoCreate: true, autoUpdate: true })
   declare updatedAt: DateTime | null
 }
+
+export class WorkerHeartbeatSchema extends BaseModel {
+  static $columns = ['createdAt', 'lastSeenAt', 'name', 'updatedAt'] as const
+  $columns = WorkerHeartbeatSchema.$columns
+  @column.dateTime({ autoCreate: true })
+  declare createdAt: DateTime
+  @column.dateTime()
+  declare lastSeenAt: DateTime
+  @column({ isPrimary: true })
+  declare name: string
+  @column.dateTime({ autoCreate: true, autoUpdate: true })
+  declare updatedAt: DateTime
+}

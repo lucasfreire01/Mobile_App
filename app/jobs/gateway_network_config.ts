@@ -9,6 +9,7 @@ import {
   MAX_ATTEMPTS,
   BACKOFF_BASE_SECONDS,
 } from '#services/gateway_network_operation_quere_service'
+import logger from '@adonisjs/core/services/logger'
 
 type GatewayNetworkConfigPayload = {
   mode: 'dhcp' | 'static'
@@ -20,22 +21,50 @@ type GatewayNetworkConfigPayload = {
   secondaryDns: string | null
 }
 
-function isGatewayNetworkConfigPayload(payload: unknown): payload is GatewayNetworkConfigPayload {
-  if (!payload || typeof payload !== 'object') {
-    return false
+export type GatewayNetworkConfigJobDependencies = {
+  gatewayLockService?: Pick<GatewayLockService, 'acquire' | 'release'>
+  gatewaySshService?: Pick<
+    GatewaySshService,
+    | 'configureDhcpFallback'
+    | 'disableDhcpFallback'
+    | 'ensureConnectionAddress'
+    | 'setEthernetModeDhcp'
+    | 'setEthernetModeStatic'
+    | 'waitForConnection'
+  >
+  cloudConnexaService?: Pick<CloudConnexaService, 'updateIpServiceRoutes'>
+}
+
+function parseGatewayNetworkConfigPayload(payload: unknown): GatewayNetworkConfigPayload | null {
+  let value: unknown = payload
+
+  if (typeof value === 'string') {
+    try {
+      value = JSON.parse(value)
+    } catch {
+      return null
+    }
   }
 
-  const value = payload as Record<string, unknown>
+  if (!value || typeof value !== 'object') {
+    return null
+  }
 
-  return (
-    (value.mode === 'dhcp' || value.mode === 'static') &&
-    typeof value.dhcpFallbackEnabled === 'boolean' &&
-    (typeof value.staticIpAddress === 'string' || value.staticIpAddress === null) &&
-    (typeof value.staticPrefixLength === 'number' || value.staticPrefixLength === null) &&
-    (typeof value.staticGateway === 'string' || value.staticGateway === null) &&
-    (typeof value.primaryDns === 'string' || value.primaryDns === null) &&
-    (typeof value.secondaryDns === 'string' || value.secondaryDns === null)
-  )
+  const config = value as Record<string, unknown>
+
+  if (
+    (config.mode !== 'dhcp' && config.mode !== 'static') ||
+    typeof config.dhcpFallbackEnabled !== 'boolean' ||
+    (typeof config.staticIpAddress !== 'string' && config.staticIpAddress !== null) ||
+    (typeof config.staticPrefixLength !== 'number' && config.staticPrefixLength !== null) ||
+    (typeof config.staticGateway !== 'string' && config.staticGateway !== null) ||
+    (typeof config.primaryDns !== 'string' && config.primaryDns !== null) ||
+    (typeof config.secondaryDns !== 'string' && config.secondaryDns !== null)
+  ) {
+    return null
+  }
+
+  return config as GatewayNetworkConfigPayload
 }
 
 export default class GatewayNetworkConfigJob {
@@ -43,7 +72,8 @@ export default class GatewayNetworkConfigJob {
 
   constructor(
     private operationId: number,
-    private processingToken: string
+    private processingToken: string,
+    private dependencies: GatewayNetworkConfigJobDependencies = {}
   ) {}
 
   async run() {
@@ -57,22 +87,72 @@ export default class GatewayNetworkConfigJob {
     }
 
     const gateway = await Gateway.findOrFail(operation.gatewayId)
-    const gatewayLockService = new GatewayLockService()
+    const gatewayLockService = this.dependencies.gatewayLockService ?? new GatewayLockService()
     const lock = await gatewayLockService.acquire(gateway.id)
 
+    logger.info(
+      {
+        event: 'gateway_network_operation_started',
+        operationId: operation.id,
+        gatewayId: gateway.id,
+        action: operation.action,
+        attempt: operation.attempts,
+      },
+      'Gateway network operation started'
+    )
+
     try {
-      if (!isGatewayNetworkConfigPayload(operation.payload)) {
+      const payload = parseGatewayNetworkConfigPayload(operation.payload)
+
+      if (!payload) {
         throw new Exception('Gateway network operation has an invalid payload.', {
           status: 422,
           code: 'E_GATEWAY_OPERATION_INVALID_PAYLOAD',
         })
       }
 
-      const payload = operation.payload
-
-      const sshService = new GatewaySshService()
+      const sshService = this.dependencies.gatewaySshService ?? new GatewaySshService()
 
       if (payload.mode === 'dhcp') {
+        if (payload.dhcpFallbackEnabled) {
+          if (
+            !payload.staticIpAddress ||
+            payload.staticPrefixLength === null ||
+            !payload.staticGateway ||
+            !payload.primaryDns
+          ) {
+            throw new Exception('DHCP fallback configuration is incomplete.', {
+              status: 422,
+              code: 'E_GATEWAY_DHCP_FALLBACK_CONFIG_INCOMPLETE',
+            })
+          }
+
+          // Install the local recovery profile before DHCP restarts. If DHCP
+          // never obtains a lease, only the gateway itself can still recover.
+          //
+          // CloudConnexa must know the fallback address before the device needs
+          // it. After DHCP is unavailable, the backend cannot add a route via
+          // the gateway itself anymore.
+          const currentAddress = sshService.ensureConnectionAddress(gateway)
+          if (gateway.ccIpServiceId && currentAddress !== payload.staticIpAddress) {
+            const cloudConnexa = this.dependencies.cloudConnexaService ?? new CloudConnexaService()
+            await cloudConnexa.updateIpServiceRoutes(gateway.ccIpServiceId, [
+              currentAddress,
+              payload.staticIpAddress,
+            ])
+          }
+
+          await sshService.configureDhcpFallback(gateway, {
+            ipAddress: payload.staticIpAddress,
+            prefixLength: payload.staticPrefixLength,
+            gateway: payload.staticGateway,
+            primaryDns: payload.primaryDns,
+            secondaryDns: payload.secondaryDns,
+          })
+        } else {
+          await sshService.disableDhcpFallback(gateway)
+        }
+
         await sshService.setEthernetModeDhcp(gateway)
         await this.markOperationAsApplied(operation)
 
@@ -99,7 +179,7 @@ export default class GatewayNetworkConfigJob {
 
       const currentAddress = sshService.ensureConnectionAddress(gateway)
       const nextAddress = payload.staticIpAddress
-      const cloudConnexa = new CloudConnexaService()
+      const cloudConnexa = this.dependencies.cloudConnexaService ?? new CloudConnexaService()
 
       if (currentAddress !== nextAddress) {
         if (!gateway.ccIpServiceId) {
@@ -124,6 +204,9 @@ export default class GatewayNetworkConfigJob {
       })
 
       await sshService.waitForConnection(nextAddress)
+
+      // A static primary configuration must not retain a DHCP recovery policy.
+      await sshService.disableDhcpFallback(gateway)
 
       gateway.managementIpAddress = nextAddress
       gateway.wanIpAddress = nextAddress
@@ -152,6 +235,14 @@ export default class GatewayNetworkConfigJob {
       throw error
     } finally {
       await gatewayLockService.release(gateway.id, lock.token)
+      logger.debug(
+        {
+          event: 'gateway_network_lock_released',
+          operationId: operation.id,
+          gatewayId: gateway.id,
+        },
+        'Gateway network lock released'
+      )
     }
   }
   private shouldRetry(error: unknown) {
@@ -167,6 +258,17 @@ export default class GatewayNetworkConfigJob {
     operation.processingExpiresAt = null
     operation.availableAt = null
     await operation.save()
+
+    logger.info(
+      {
+        event: 'gateway_network_operation_applied',
+        operationId: operation.id,
+        gatewayId: operation.gatewayId,
+        action: operation.action,
+        attempts: operation.attempts,
+      },
+      'Gateway network operation applied'
+    )
   }
 
   private async markOperationAsFailed(operation: GatewayNetworkOperation, error: unknown) {
@@ -191,6 +293,19 @@ export default class GatewayNetworkConfigJob {
       operation.finishedAt = null
       await operation.save()
 
+      logger.warn(
+        {
+          event: 'gateway_network_operation_retry_scheduled',
+          operationId: operation.id,
+          gatewayId: operation.gatewayId,
+          action: operation.action,
+          attempts: operation.attempts,
+          retryDelaySeconds: retryDelay,
+          errorCode,
+        },
+        'Gateway network operation retry scheduled'
+      )
+
       return
     }
 
@@ -198,5 +313,17 @@ export default class GatewayNetworkConfigJob {
     operation.availableAt = null
     operation.finishedAt = DateTime.now()
     await operation.save()
+
+    logger.error(
+      {
+        event: 'gateway_network_operation_failed',
+        operationId: operation.id,
+        gatewayId: operation.gatewayId,
+        action: operation.action,
+        attempts: operation.attempts,
+        errorCode,
+      },
+      'Gateway network operation failed'
+    )
   }
 }

@@ -50,4 +50,7 @@ export default await Env.create(new URL('../', import.meta.url), {
   // Development seed
   SEED_ADMIN_EMAIL: Env.schema.string(),
   SEED_ADMIN_PASSWORD: Env.schema.secret(),
+
+  // Queue monitoring
+  QUEUE_HEALTH_MAX_PENDING_AGE_SECONDS: Env.schema.number.optional(),
 })

@@ -2,6 +2,7 @@ import type { ApplicationService } from '@adonisjs/core/types'
 import { SimpleIntervalJob, ToadScheduler, AsyncTask } from 'toad-scheduler'
 import GatewayStatusJob from '#jobs/gateway_status_job'
 import GatewayNetworkOperationWorker from '#jobs/gateway_network_operations_worker'
+import logger from '@adonisjs/core/services/logger'
 
 export default class SchedulerProvider {
   constructor(protected app: ApplicationService) {}
@@ -18,7 +19,14 @@ export default class SchedulerProvider {
         await gatewayNetworkOperationWorker.run()
       },
       (err: Error) => {
-        console.error(`[${gatewayNetworkOperationWorker.name}] Error:`, err.message)
+        logger.error(
+          {
+            event: 'gateway_network_worker_scheduler_failed',
+            worker: gatewayNetworkOperationWorker.name,
+            errorName: err.name,
+          },
+          'Gateway network worker scheduler task failed'
+        )
       }
     )
 
@@ -26,7 +34,13 @@ export default class SchedulerProvider {
 
     scheduler.addSimpleIntervalJob(workerJob)
 
-    console.log('[Scheduler] GatewayNetworkOperationWorker scheduled (every 10 seconds)')
+    logger.info(
+      {
+        event: 'gateway_network_worker_scheduled',
+        intervalSeconds: 10,
+      },
+      'Gateway network worker scheduled'
+    )
 
     const task = new AsyncTask(
       gatewayStatusJob.name,
@@ -34,7 +48,14 @@ export default class SchedulerProvider {
         await gatewayStatusJob.run()
       },
       (err: Error) => {
-        console.error(`[${gatewayStatusJob.name}] Error:`, err.message)
+        logger.error(
+          {
+            event: 'gateway_status_scheduler_failed',
+            job: gatewayStatusJob.name,
+            errorName: err.name,
+          },
+          'Gateway status scheduler task failed'
+        )
       }
     )
 
@@ -43,7 +64,13 @@ export default class SchedulerProvider {
 
     scheduler.addSimpleIntervalJob(job)
 
-    console.log('[Scheduler] GatewayStatusJob scheduled (every 2 minutes)')
+    logger.info(
+      {
+        event: 'gateway_status_job_scheduled',
+        intervalSeconds: 120,
+      },
+      'Gateway status job scheduled'
+    )
 
     // Gracefully stop scheduler on app shutdown
     this.app.terminating(async () => {

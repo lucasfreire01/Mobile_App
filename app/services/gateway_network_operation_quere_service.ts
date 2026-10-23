@@ -21,14 +21,16 @@ export default class GatewayNetworkOperationQueueService {
     })
 
     return db.transaction(async (trx) => {
+      const nowValue = now.toFormat(trx.dialect.dateTimeFormat)
+
       await trx
         .from('gateway_network_operations')
         .where('status', 'applying')
-        .where('processing_expires_at', '<=', now.toJSDate())
+        .where('processing_expires_at', '<=', nowValue)
         .where('attempts', '<', MAX_ATTEMPTS)
         .update({
           status: 'pending',
-          available_at: now.toJSDate(),
+          available_at: nowValue,
           processing_token: null,
           processing_expires_at: null,
           error_code: 'E_GATEWAY_OPERATION_LEASE_EXPIRED',
@@ -38,11 +40,11 @@ export default class GatewayNetworkOperationQueueService {
       await trx
         .from('gateway_network_operations')
         .where('status', 'applying')
-        .where('processing_expires_at', '<=', now.toJSDate())
+        .where('processing_expires_at', '<=', nowValue)
         .where('attempts', '>=', MAX_ATTEMPTS)
         .update({
           status: 'failed',
-          finished_at: now.toJSDate(),
+          finished_at: nowValue,
           processing_token: null,
           processing_expires_at: null,
           error_code: 'E_GATEWAY_OPERATION_LEASE_EXPIRED',
@@ -51,7 +53,7 @@ export default class GatewayNetworkOperationQueueService {
 
       const operation = await GatewayNetworkOperation.query({ client: trx })
         .where('status', 'pending')
-        .where('available_at', '<=', now.toJSDate())
+        .where('available_at', '<=', nowValue)
         .orderBy('available_at', 'asc')
         .orderBy('id', 'asc')
         .forUpdate()
