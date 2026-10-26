@@ -1,0 +1,19 @@
+[Unit]
+Description=Browan gateway network operations worker
+Wants=network-online.target
+After=network-online.target browan-api.service
+
+[Service]
+Type=simple
+User=browan
+Group=browan
+WorkingDirectory=/opt/mobile_vpn/build
+Environment=NODE_ENV=production
+EnvironmentFile=/etc/browan/mobile-vpn.env
+ExecStart=/usr/bin/node ace.js gateway:network-worker
+Restart=always
+RestartSec=5
+TimeoutStopSec=45
+
+[Install]
+WantedBy=multi-user.target

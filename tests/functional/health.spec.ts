@@ -5,11 +5,16 @@ import { DateTime } from 'luxon'
 import Gateway from '#models/gateway'
 import GatewayNetworkOperation from '#models/gateway_network_operation'
 import User from '#models/user'
+import WorkerHeartbeat from '#models/worker_heartbeat'
+import WorkerHeartbeatService, {
+  GATEWAY_NETWORK_OPERATIONS_WORKER,
+} from '#services/worker_heartbeat_service'
 
 test.group('Health API', (group) => {
   group.each.setup(async () => {
     await GatewayNetworkOperation.query().delete()
     await Gateway.query().delete()
+    await WorkerHeartbeat.query().delete()
     await db.from('auth_access_tokens').delete()
     await User.query().delete()
   })
@@ -31,6 +36,10 @@ test.group('Health API', (group) => {
     return response.body().data.token as string
   }
 
+  async function recordWorkerHeartbeat() {
+    await new WorkerHeartbeatService().beat(GATEWAY_NETWORK_OPERATIONS_WORKER)
+  }
+
   test('reports application and database health', async ({ client, assert }) => {
     const response = await client.get('/health')
 
@@ -49,42 +58,56 @@ test.group('Health API', (group) => {
 
   test('reports an empty queue as healthy', async ({ client, assert }) => {
     const token = await login(client)
+    await recordWorkerHeartbeat()
 
     const response = await client
       .get('/api/v1/health/queue')
       .header('authorization', `Bearer ${token}`)
 
     response.assertStatus(200)
-    assert.deepEqual(response.body(), {
-      status: 'ok',
-      queue: {
-        pending: 0,
-        applying: 0,
-        failed: 0,
-        expiredLeases: 0,
-        oldestPendingSeconds: null,
-      },
+    assert.equal(response.body().status, 'ok')
+    assert.deepEqual(response.body().queue, {
+      pending: 0,
+      applying: 0,
+      failed: 0,
+      expiredLeases: 0,
+      oldestPendingSeconds: null,
     })
+    assert.equal(response.body().worker.name, GATEWAY_NETWORK_OPERATIONS_WORKER)
+    assert.equal(response.body().worker.status, 'ok')
+    assert.isString(response.body().worker.lastSeenAt)
+    assert.isNumber(response.body().worker.ageSeconds)
   })
 
   test('reports queue operation counters', async ({ client, assert }) => {
     const token = await login(client)
+    await recordWorkerHeartbeat()
 
     const gateway = await Gateway.create({
       name: 'gateway-health-test',
       managementIpAddress: '10.42.0.126',
       status: 'offline',
     })
+    const activeGateway = await Gateway.create({
+      name: 'gateway-health-active-test',
+      managementIpAddress: '10.42.0.127',
+      status: 'offline',
+    })
+    const expiredGateway = await Gateway.create({
+      name: 'gateway-health-expired-test',
+      managementIpAddress: '10.42.0.128',
+      status: 'offline',
+    })
 
     await GatewayNetworkOperation.createMany([
       {
-        gatewayId: gateway.id,
+        gatewayId: activeGateway.id,
         action: 'apply_dhcp',
         status: 'pending',
         attempts: 0,
       },
       {
-        gatewayId: gateway.id,
+        gatewayId: expiredGateway.id,
         action: 'apply_dhcp',
         status: 'applying',
         attempts: 1,
@@ -120,5 +143,20 @@ test.group('Health API', (group) => {
     const oldestPendingSeconds = response.body().queue.oldestPendingSeconds as number | null
     assert.isNumber(oldestPendingSeconds)
     assert.isAtLeast(oldestPendingSeconds as number, 0)
+    assert.equal(response.body().worker.status, 'ok')
+  })
+
+  test('reports a missing worker heartbeat as degraded', async ({ client, assert }) => {
+    const token = await login(client)
+
+    const response = await client
+      .get('/api/v1/health/queue')
+      .header('authorization', `Bearer ${token}`)
+
+    response.assertStatus(200)
+    assert.equal(response.body().status, 'degraded')
+    assert.equal(response.body().worker.status, 'stale')
+    assert.isNull(response.body().worker.lastSeenAt)
+    assert.isNull(response.body().worker.ageSeconds)
   })
 })

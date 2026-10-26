@@ -1,11 +1,13 @@
 import { test } from '@japa/runner'
 import { Exception } from '@adonisjs/core/exceptions'
 import {
+  buildArmStaticRollbackCommand,
+  buildCancelStaticRollbackCommand,
   buildDhcpFallbackCommand,
   DHCP_FALLBACK_COOLDOWN_SECONDS,
   DHCP_FALLBACK_FAILURE_THRESHOLD,
   DHCP_FALLBACK_SCRIPT,
-} from '#services/gateway_ssh_service'
+} from '#services/gateway_network_command_builder'
 
 test.group('DHCP fallback command', () => {
   test('installs an enabled static recovery profile before DHCP is restarted', ({ assert }) => {
@@ -71,5 +73,21 @@ test.group('DHCP fallback command', () => {
 
     assert.instanceOf(caught, Exception)
     assert.equal((caught as Exception).code, 'E_GATEWAY_STATIC_PREFIX_INVALID')
+  })
+
+  test('arms and cancels static rollback using an unguessable in-memory token', ({ assert }) => {
+    const token = '5e9f4c53-22f4-4da9-988d-84df68caed58'
+    const armCommand = buildArmStaticRollbackCommand(token, 120)
+    const cancelCommand = buildCancelStaticRollbackCommand(token)
+
+    assert.include(armCommand, 'cp /etc/config/network')
+    assert.include(armCommand, 'cp \'/etc/network/interfaces\'')
+    assert.include(armCommand, "printf %s '5e9f4c53-22f4-4da9-988d-84df68caed58'")
+    assert.include(armCommand, 'sleep 120')
+    assert.include(armCommand, 'gateway_static_rollback.sh')
+    assert.include(armCommand, 'gateway_static_addresses.backup')
+    assert.include(armCommand, 'grep -F -x -q "$address" "$ADDRESSES_BACKUP"')
+    assert.include(cancelCommand, "cat '/tmp/gateway_static_rollback.token'")
+    assert.include(cancelCommand, 'rm -f')
   })
 })

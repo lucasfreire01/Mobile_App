@@ -1,6 +1,7 @@
 import Gateway from '#models/gateway'
 import CloudConnexaService from '#services/cloud_connexa_service'
 import GatewaySshService from '#services/gateway_ssh_service'
+import { STATIC_ROLLBACK_TIMEOUT_SECONDS } from '#services/gateway_network_command_builder'
 import { Exception } from '@adonisjs/core/exceptions'
 import { DateTime } from 'luxon'
 import GatewayLockService from '#services/gateway_lock_service'
@@ -10,6 +11,8 @@ import {
   BACKOFF_BASE_SECONDS,
 } from '#services/gateway_network_operation_quere_service'
 import logger from '@adonisjs/core/services/logger'
+
+const STATIC_ROLLBACK_RETRY_DELAY_SECONDS = STATIC_ROLLBACK_TIMEOUT_SECONDS + BACKOFF_BASE_SECONDS
 
 type GatewayNetworkConfigPayload = {
   mode: 'dhcp' | 'static'
@@ -26,11 +29,15 @@ export type GatewayNetworkConfigJobDependencies = {
   gatewaySshService?: Pick<
     GatewaySshService,
     | 'configureDhcpFallback'
+    | 'armStaticRollback'
+    | 'cancelStaticRollback'
     | 'disableDhcpFallback'
+    | 'disableDhcpFallbackAtAddress'
     | 'ensureConnectionAddress'
     | 'setEthernetModeDhcp'
     | 'setEthernetModeStatic'
     | 'waitForConnection'
+    | 'getEthernetConfig'
   >
   cloudConnexaService?: Pick<CloudConnexaService, 'updateIpServiceRoutes'>
 }
@@ -89,6 +96,7 @@ export default class GatewayNetworkConfigJob {
     const gateway = await Gateway.findOrFail(operation.gatewayId)
     const gatewayLockService = this.dependencies.gatewayLockService ?? new GatewayLockService()
     const lock = await gatewayLockService.acquire(gateway.id)
+    let staticRollbackArmed = false
 
     logger.info(
       {
@@ -112,6 +120,17 @@ export default class GatewayNetworkConfigJob {
       }
 
       const sshService = this.dependencies.gatewaySshService ?? new GatewaySshService()
+      if (operation.previousPayload === null) {
+        const config = await sshService.getEthernetConfig(gateway)
+
+        operation.previousPayload = {
+          source: 'gateway_device',
+          capturedAt: DateTime.now().toISO(),
+          config,
+        }
+
+        await operation.save()
+      }
 
       if (payload.mode === 'dhcp') {
         if (payload.dhcpFallbackEnabled) {
@@ -195,6 +214,9 @@ export default class GatewayNetworkConfigJob {
         ])
       }
 
+      const rollbackToken = await sshService.armStaticRollback(gateway)
+      staticRollbackArmed = true
+
       await sshService.setEthernetModeStatic(gateway, {
         ipAddress: nextAddress,
         prefixLength: payload.staticPrefixLength,
@@ -205,8 +227,10 @@ export default class GatewayNetworkConfigJob {
 
       await sshService.waitForConnection(nextAddress)
 
+      await sshService.cancelStaticRollback(nextAddress, rollbackToken)
+
       // A static primary configuration must not retain a DHCP recovery policy.
-      await sshService.disableDhcpFallback(gateway)
+      await sshService.disableDhcpFallbackAtAddress(nextAddress)
 
       gateway.managementIpAddress = nextAddress
       gateway.wanIpAddress = nextAddress
@@ -230,7 +254,9 @@ export default class GatewayNetworkConfigJob {
         managementIpAddress: nextAddress,
       }
     } catch (error) {
-      await this.markOperationAsFailed(operation, error)
+      await this.markOperationAsFailed(operation, error, {
+        minimumRetryDelaySeconds: staticRollbackArmed ? STATIC_ROLLBACK_RETRY_DELAY_SECONDS : 0,
+      })
 
       throw error
     } finally {
@@ -271,7 +297,11 @@ export default class GatewayNetworkConfigJob {
     )
   }
 
-  private async markOperationAsFailed(operation: GatewayNetworkOperation, error: unknown) {
+  private async markOperationAsFailed(
+    operation: GatewayNetworkOperation,
+    error: unknown,
+    options: { minimumRetryDelaySeconds: number } = { minimumRetryDelaySeconds: 0 }
+  ) {
     const errorCode =
       error instanceof Exception && typeof error.code === 'string'
         ? error.code
@@ -285,7 +315,10 @@ export default class GatewayNetworkConfigJob {
     operation.processingExpiresAt = null
 
     if (this.shouldRetry(error) && operation.attempts < MAX_ATTEMPTS) {
-      const retryDelay = BACKOFF_BASE_SECONDS * 2 ** (operation.attempts - 1)
+      const retryDelay = Math.max(
+        BACKOFF_BASE_SECONDS * 2 ** (operation.attempts - 1),
+        options.minimumRetryDelaySeconds
+      )
 
       operation.status = 'pending'
       operation.availableAt = DateTime.now().plus({ seconds: retryDelay })

@@ -1,5 +1,8 @@
 import GatewayNetworkConfigJob from '#jobs/gateway_network_config'
 import GatewayNetworkOperationQueueService from '#services/gateway_network_operation_quere_service'
+import WorkerHeartbeatService, {
+  GATEWAY_NETWORK_OPERATIONS_WORKER,
+} from '#services/worker_heartbeat_service'
 import { Exception } from '@adonisjs/core/exceptions'
 import logger from '@adonisjs/core/services/logger'
 
@@ -9,6 +12,8 @@ export default class GatewayNetworkOperationWorker {
   readonly name = 'GatewayNetworkOperationWorker'
 
   async run() {
+    await new WorkerHeartbeatService().beat(GATEWAY_NETWORK_OPERATIONS_WORKER)
+
     const results = await Promise.allSettled(
       Array.from({ length: WORKER_CONCURRENCY }, () => this.processOne())
     )

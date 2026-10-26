@@ -53,4 +53,6 @@ export default await Env.create(new URL('../', import.meta.url), {
 
   // Queue monitoring
   QUEUE_HEALTH_MAX_PENDING_AGE_SECONDS: Env.schema.number.optional(),
+  QUEUE_HEALTH_MAX_WORKER_AGE_SECONDS: Env.schema.number.optional(),
+  GATEWAY_STATIC_ROLLBACK_DELAY_SECONDS: Env.schema.number.optional(),
 })

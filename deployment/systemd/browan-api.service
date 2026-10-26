@@ -1,0 +1,19 @@
+[Unit]
+Description=Browan Mobile VPN HTTP API
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=simple
+User=browan
+Group=browan
+WorkingDirectory=/opt/mobile_vpn/build
+Environment=NODE_ENV=production
+EnvironmentFile=/etc/browan/mobile-vpn.env
+ExecStart=/usr/bin/node bin/server.js
+Restart=always
+RestartSec=5
+TimeoutStopSec=30
+
+[Install]
+WantedBy=multi-user.target

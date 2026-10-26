@@ -6,6 +6,19 @@ import { createGatewayValidator } from '#validators/gateway'
 import { Exception } from '@adonisjs/core/exceptions'
 import type { HttpContext } from '@adonisjs/core/http'
 
+const DEFAULT_NETWORK_OPERATIONS_LIMIT = 20
+const MAX_NETWORK_OPERATIONS_LIMIT = 100
+
+function parsePaginationParameter(value: unknown, fallback: number, maximum: number) {
+  const parsed = Number(value)
+
+  if (!Number.isSafeInteger(parsed) || parsed < 1) {
+    return fallback
+  }
+
+  return Math.min(parsed, maximum)
+}
+
 export default class GatewaysController {
   /**
    * Display a list of resource
@@ -82,13 +95,44 @@ export default class GatewaysController {
     })
   }
 
-  async networkOperations({ params, response }: HttpContext) {
+  async networkOperations({ params, request, response }: HttpContext) {
     const gateway = await Gateway.findOrFail(params.id)
+    const page = parsePaginationParameter(request.input('page'), 1, Number.MAX_SAFE_INTEGER)
+    const limit = parsePaginationParameter(
+      request.input('limit'),
+      DEFAULT_NETWORK_OPERATIONS_LIMIT,
+      MAX_NETWORK_OPERATIONS_LIMIT
+    )
     const operations = await GatewayNetworkOperation.query()
       .where('gateway_id', gateway.id)
       .orderBy('created_at', 'desc')
+      .paginate(page, limit)
 
-    return response.ok({ operations })
+    operations
+      .baseUrl(`/api/v1/gateways/${gateway.id}/network-operations`)
+      .queryString({ limit })
+
+    return response.ok({
+      operations: operations.all().map((operation) => ({
+        id: operation.id,
+        gatewayId: operation.gatewayId,
+        action: operation.action,
+        status: operation.status,
+        attempts: operation.attempts,
+        errorCode: operation.errorCode,
+        errorMessage: operation.errorMessage,
+        requestedByUserId: operation.requestedByUserId,
+        requestedByEmail: operation.requestedByEmail,
+        payload: operation.payload,
+        previousPayload: operation.previousPayload,
+        availableAt: operation.availableAt,
+        startedAt: operation.startedAt,
+        finishedAt: operation.finishedAt,
+        createdAt: operation.createdAt,
+        updatedAt: operation.updatedAt,
+      })),
+      meta: operations.getMeta(),
+    })
   }
 
   async edit() {}

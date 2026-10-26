@@ -60,7 +60,7 @@ export class GatewayEthernetConfigSchema extends BaseModel {
 }
 
 export class GatewayNetworkOperationSchema extends BaseModel {
-  static $columns = ['action', 'attempts', 'availableAt', 'createdAt', 'errorCode', 'errorMessage', 'finishedAt', 'gatewayId', 'id', 'payload', 'processingExpiresAt', 'processingToken', 'startedAt', 'status', 'updatedAt'] as const
+  static $columns = ['action', 'attempts', 'availableAt', 'createdAt', 'errorCode', 'errorMessage', 'finishedAt', 'gatewayId', 'id', 'payload', 'previousPayload', 'processingExpiresAt', 'processingToken', 'requestedByEmail', 'requestedByUserId', 'startedAt', 'status', 'updatedAt'] as const
   $columns = GatewayNetworkOperationSchema.$columns
   @column()
   declare action: string
@@ -82,10 +82,16 @@ export class GatewayNetworkOperationSchema extends BaseModel {
   declare id: number
   @column()
   declare payload: any | null
+  @column()
+  declare previousPayload: any | null
   @column.dateTime()
   declare processingExpiresAt: DateTime | null
   @column()
   declare processingToken: string | null
+  @column()
+  declare requestedByEmail: string | null
+  @column()
+  declare requestedByUserId: number | null
   @column.dateTime()
   declare startedAt: DateTime | null
   @column()

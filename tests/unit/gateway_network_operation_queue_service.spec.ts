@@ -9,15 +9,20 @@ import GatewayNetworkOperationQueueService, {
 } from '#services/gateway_network_operation_quere_service'
 
 test.group('GatewayNetworkOperationQueueService', (group) => {
+  let gatewaySequence = 2
+
   group.each.setup(async () => {
     await GatewayNetworkOperation.query().delete()
     await Gateway.query().delete()
+    gatewaySequence = 2
   })
 
   async function createGateway() {
+    const sequence = gatewaySequence++
+
     return Gateway.create({
-      name: 'gateway-test',
-      managementIpAddress: '10.42.0.126',
+      name: `gateway-test-${sequence}`,
+      managementIpAddress: `10.42.0.${sequence}`,
       status: 'offline',
     })
   }
@@ -34,9 +39,13 @@ test.group('GatewayNetworkOperationQueueService', (group) => {
   }
 
   test('claims the oldest available pending operation', async ({ assert }) => {
-    const gateway = await createGateway()
-    const oldest = await createPendingOperation(gateway.id, DateTime.now().minus({ seconds: 10 }))
-    await createPendingOperation(gateway.id, DateTime.now().minus({ seconds: 5 }))
+    const oldestGateway = await createGateway()
+    const newerGateway = await createGateway()
+    const oldest = await createPendingOperation(
+      oldestGateway.id,
+      DateTime.now().minus({ seconds: 10 })
+    )
+    await createPendingOperation(newerGateway.id, DateTime.now().minus({ seconds: 5 }))
 
     const claimed = await new GatewayNetworkOperationQueueService().claimNext()
 
@@ -63,13 +72,14 @@ test.group('GatewayNetworkOperationQueueService', (group) => {
   })
 
   test('skips an operation locked by another PostgreSQL transaction', async ({ assert }) => {
-    const gateway = await createGateway()
+    const lockedGateway = await createGateway()
+    const availableGateway = await createGateway()
     const lockedOperation = await createPendingOperation(
-      gateway.id,
+      lockedGateway.id,
       DateTime.now().minus({ seconds: 10 })
     )
     const availableOperation = await createPendingOperation(
-      gateway.id,
+      availableGateway.id,
       DateTime.now().minus({ seconds: 5 })
     )
     const transaction = await db.transaction()
@@ -94,13 +104,14 @@ test.group('GatewayNetworkOperationQueueService', (group) => {
   })
 
   test('assigns different operations to workers running at the same time', async ({ assert }) => {
-    const gateway = await createGateway()
+    const firstGateway = await createGateway()
+    const secondGateway = await createGateway()
     const firstOperation = await createPendingOperation(
-      gateway.id,
+      firstGateway.id,
       DateTime.now().minus({ seconds: 10 })
     )
     const secondOperation = await createPendingOperation(
-      gateway.id,
+      secondGateway.id,
       DateTime.now().minus({ seconds: 5 })
     )
 

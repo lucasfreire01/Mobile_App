@@ -60,11 +60,25 @@ test.group('GatewayNetworkConfigJob', (group) => {
       },
       gatewaySshService: {
         ensureConnectionAddress: () => '10.42.0.126',
+        getEthernetConfig: async () => {
+          calls.push('ssh.getEthernetConfig')
+          return "network.wan.proto='static'\nnetwork.wan.ipaddr='10.42.0.126'"
+        },
         configureDhcpFallback: async () => {
           calls.push('ssh.configureDhcpFallback')
         },
+        armStaticRollback: async () => {
+          calls.push('ssh.armStaticRollback')
+          return '5e9f4c53-22f4-4da9-988d-84df68caed58'
+        },
+        cancelStaticRollback: async () => {
+          calls.push('ssh.cancelStaticRollback')
+        },
         disableDhcpFallback: async () => {
           calls.push('ssh.disableDhcpFallback')
+        },
+        disableDhcpFallbackAtAddress: async () => {
+          calls.push('ssh.disableDhcpFallbackAtAddress')
         },
         setEthernetModeDhcp: async () => {
           calls.push('ssh.setEthernetModeDhcp')
@@ -122,6 +136,7 @@ test.group('GatewayNetworkConfigJob', (group) => {
     assert.equal(result.action, 'dhcp_applied')
     assert.deepEqual(dependencies.calls, [
       'lock.acquire',
+      'ssh.getEthernetConfig',
       'ssh.disableDhcpFallback',
       'ssh.setEthernetModeDhcp',
       'lock.release',
@@ -131,6 +146,12 @@ test.group('GatewayNetworkConfigJob', (group) => {
     assert.isNull(operation.processingToken)
     assert.isNull(operation.processingExpiresAt)
     assert.isNotNull(operation.finishedAt)
+    assert.equal(operation.previousPayload?.source, 'gateway_device')
+    assert.equal(
+      operation.previousPayload?.config,
+      "network.wan.proto='static'\nnetwork.wan.ipaddr='10.42.0.126'"
+    )
+    assert.isString(operation.previousPayload?.capturedAt)
   })
 
   test('reschedules a transient SSH failure with exponential backoff', async ({ assert }) => {
@@ -197,10 +218,13 @@ test.group('GatewayNetworkConfigJob', (group) => {
     assert.equal(result.managementIpAddress, '10.42.0.200')
     assert.deepEqual(dependencies.calls, [
       'lock.acquire',
+      'ssh.getEthernetConfig',
       'cloud.updateIpServiceRoutes',
+      'ssh.armStaticRollback',
       'ssh.setEthernetModeStatic',
       'ssh.waitForConnection',
-      'ssh.disableDhcpFallback',
+      'ssh.cancelStaticRollback',
+      'ssh.disableDhcpFallbackAtAddress',
       'cloud.updateIpServiceRoutes',
       'lock.release',
     ])
@@ -214,6 +238,11 @@ test.group('GatewayNetworkConfigJob', (group) => {
     assert.isNotNull(gateway.wanIpObservedAt)
     assert.isNotNull(gateway.lastSeenAt)
     assert.equal(operation.status, 'applied')
+    assert.equal(operation.previousPayload?.source, 'gateway_device')
+    assert.equal(
+      operation.previousPayload?.config,
+      "network.wan.proto='static'\nnetwork.wan.ipaddr='10.42.0.126'"
+    )
   })
 
   test('retries a static IP change when the gateway does not reconnect', async ({ assert }) => {
@@ -248,7 +277,9 @@ test.group('GatewayNetworkConfigJob', (group) => {
     assert.equal(error.code, 'E_GATEWAY_SSH_CONNECTION_TIMEOUT')
     assert.deepEqual(dependencies.calls, [
       'lock.acquire',
+      'ssh.getEthernetConfig',
       'cloud.updateIpServiceRoutes',
+      'ssh.armStaticRollback',
       'ssh.setEthernetModeStatic',
       'ssh.waitForConnection',
       'lock.release',
@@ -264,6 +295,45 @@ test.group('GatewayNetworkConfigJob', (group) => {
     assert.isNull(operation.startedAt)
     assert.isNull(operation.finishedAt)
     assert.isNotNull(operation.availableAt)
+    assert.isTrue(operation.availableAt! > DateTime.now().plus({ seconds: 145 }))
+  })
+
+  test('preserves the first device snapshot when retrying an operation', async ({ assert }) => {
+    const gateway = await createGateway()
+    const operation = await createOperation(gateway.id, {
+      mode: 'dhcp',
+      dhcpFallbackEnabled: false,
+      staticIpAddress: null,
+      staticPrefixLength: null,
+      staticGateway: null,
+      primaryDns: null,
+      secondaryDns: null,
+    })
+    const firstSnapshot = {
+      source: 'gateway_device',
+      capturedAt: '2026-10-26T11:00:00.000-03:00',
+      config: "network.wan.proto='static'\nnetwork.wan.ipaddr='10.42.0.126'",
+    }
+
+    operation.previousPayload = firstSnapshot
+    await operation.save()
+
+    const dependencies = createDependencies()
+    dependencies.gatewaySshService!.getEthernetConfig = async () => {
+      throw new Error('A retry must not capture a new previous state')
+    }
+
+    await new GatewayNetworkConfigJob(operation.id, PROCESSING_TOKEN, dependencies).run()
+    await operation.refresh()
+
+    assert.deepEqual(dependencies.calls, [
+      'lock.acquire',
+      'ssh.disableDhcpFallback',
+      'ssh.setEthernetModeDhcp',
+      'lock.release',
+    ])
+    assert.deepEqual(operation.previousPayload, firstSnapshot)
+    assert.equal(operation.status, 'applied')
   })
 
   test('fails permanently for an invalid payload without calling SSH', async ({ assert }) => {

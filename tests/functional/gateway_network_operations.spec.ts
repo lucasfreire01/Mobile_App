@@ -74,6 +74,21 @@ test.group('Gateway network operations API', (group) => {
 
     const operation = await GatewayNetworkOperation.findOrFail(response.body().operation.id)
     assert.equal(operation.status, 'pending')
+    assert.equal(operation.requestedByEmail, 'operator@example.test')
+    assert.equal(
+      operation.requestedByUserId,
+      (await User.findByOrFail('email', 'operator@example.test')).id
+    )
+    assert.deepEqual(operation.payload, {
+      mode: 'dhcp',
+      dhcpFallbackEnabled: false,
+      staticIpAddress: null,
+      staticPrefixLength: null,
+      staticGateway: null,
+      primaryDns: null,
+      secondaryDns: null,
+    })
+    assert.isNull(operation.previousPayload)
   })
 
   test('rejects a second operation while one is pending', async ({ client, assert }) => {
@@ -92,6 +107,33 @@ test.group('Gateway network operations API', (group) => {
     assert.equal(secondResponse.body().message, 'Gateway already has a network operation in progress.')
   })
 
+  test('allows only one active operation when apply requests arrive concurrently', async ({
+    client,
+    assert,
+  }) => {
+    const token = await login(client)
+    const gateway = await createGatewayWithDhcpConfig()
+
+    const [firstResponse, secondResponse] = await Promise.all([
+      client
+        .post(`/api/v1/gateways/${gateway.id}/ethernet/apply`)
+        .header('authorization', `Bearer ${token}`),
+      client
+        .post(`/api/v1/gateways/${gateway.id}/ethernet/apply`)
+        .header('authorization', `Bearer ${token}`),
+    ])
+
+    assert.sameMembers([firstResponse.status(), secondResponse.status()], [202, 409])
+    assert.equal(
+      await GatewayNetworkOperation.query()
+        .where('gateway_id', gateway.id)
+        .whereIn('status', ['pending', 'applying'])
+        .count('* as total')
+        .then((result) => Number(result[0].$extras.total)),
+      1
+    )
+  })
+
   test('lists operations from newest to oldest', async ({ client, assert }) => {
     const token = await login(client)
     const gateway = await createGatewayWithDhcpConfig()
@@ -107,6 +149,15 @@ test.group('Gateway network operations API', (group) => {
       action: 'apply_static',
       status: 'failed',
       attempts: 5,
+      requestedByEmail: 'operator@example.test',
+      payload: {
+        mode: 'static',
+        staticIpAddress: '10.42.0.200',
+      },
+      previousPayload: {
+        source: 'gateway_device',
+        config: "network.wan.proto='dhcp'",
+      },
       createdAt: DateTime.now(),
     })
 
@@ -118,6 +169,63 @@ test.group('Gateway network operations API', (group) => {
     assert.deepEqual(
       response.body().operations.map((operation: { id: number }) => operation.id),
       [newer.id, older.id]
+    )
+    const newestOperation = response.body().operations[0]
+    assert.equal(newestOperation.requestedByEmail, 'operator@example.test')
+    assert.deepEqual(newestOperation.payload, {
+      mode: 'static',
+      staticIpAddress: '10.42.0.200',
+    })
+    assert.deepEqual(newestOperation.previousPayload, {
+      source: 'gateway_device',
+      config: "network.wan.proto='dhcp'",
+    })
+    assert.notProperty(newestOperation, 'processingToken')
+    assert.notProperty(newestOperation, 'processingExpiresAt')
+    assert.equal(response.body().meta.total, 2)
+    assert.equal(response.body().meta.currentPage, 1)
+    assert.equal(response.body().meta.perPage, 20)
+  })
+
+  test('paginates the operation history', async ({ client, assert }) => {
+    const token = await login(client)
+    const gateway = await createGatewayWithDhcpConfig()
+    const operations = await Promise.all(
+      [1, 2, 3].map((attempts) =>
+        GatewayNetworkOperation.create({
+          gatewayId: gateway.id,
+          action: 'apply_dhcp',
+          status: 'applied',
+          attempts,
+          createdAt: DateTime.now().plus({ seconds: attempts }),
+        })
+      )
+    )
+
+    const response = await client
+      .get(`/api/v1/gateways/${gateway.id}/network-operations?page=2&limit=2`)
+      .header('authorization', `Bearer ${token}`)
+
+    response.assertStatus(200)
+    assert.deepEqual(
+      response.body().operations.map((operation: { id: number }) => operation.id),
+      [operations[0].id]
+    )
+    assert.equal(response.body().meta.total, 3)
+    assert.equal(response.body().meta.currentPage, 2)
+    assert.equal(response.body().meta.perPage, 2)
+    assert.equal(response.body().meta.lastPage, 2)
+    assert.equal(
+      response.body().meta.firstPageUrl,
+      `/api/v1/gateways/${gateway.id}/network-operations?limit=2&page=1`
+    )
+    assert.equal(
+      response.body().meta.lastPageUrl,
+      `/api/v1/gateways/${gateway.id}/network-operations?limit=2&page=2`
+    )
+    assert.equal(
+      response.body().meta.previousPageUrl,
+      `/api/v1/gateways/${gateway.id}/network-operations?limit=2&page=1`
     )
   })
 
