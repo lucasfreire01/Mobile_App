@@ -100,8 +100,56 @@ export class GatewayNetworkOperationSchema extends BaseModel {
   declare updatedAt: DateTime
 }
 
+export class GatewaySecurityAlertSchema extends BaseModel {
+  static $columns = ['acknowledgedAt', 'acknowledgedByEmail', 'acknowledgedByUserId', 'createdAt', 'gatewayId', 'id', 'message', 'operationId', 'status', 'type', 'updatedAt'] as const
+  $columns = GatewaySecurityAlertSchema.$columns
+  @column.dateTime()
+  declare acknowledgedAt: DateTime | null
+  @column()
+  declare acknowledgedByEmail: string | null
+  @column()
+  declare acknowledgedByUserId: number | null
+  @column.dateTime({ autoCreate: true })
+  declare createdAt: DateTime
+  @column()
+  declare gatewayId: number
+  @column({ isPrimary: true })
+  declare id: number
+  @column()
+  declare message: string
+  @column()
+  declare operationId: number
+  @column()
+  declare status: string
+  @column()
+  declare type: string
+  @column.dateTime({ autoCreate: true, autoUpdate: true })
+  declare updatedAt: DateTime
+}
+
+export class GatewaySshHostKeyRotationSchema extends BaseModel {
+  static $columns = ['createdAt', 'gatewayId', 'id', 'nextFingerprint', 'previousFingerprint', 'reason', 'requestedByEmail', 'requestedByUserId'] as const
+  $columns = GatewaySshHostKeyRotationSchema.$columns
+  @column.dateTime({ autoCreate: true })
+  declare createdAt: DateTime
+  @column()
+  declare gatewayId: number
+  @column({ isPrimary: true })
+  declare id: number
+  @column()
+  declare nextFingerprint: string
+  @column()
+  declare previousFingerprint: string | null
+  @column()
+  declare reason: string
+  @column()
+  declare requestedByEmail: string
+  @column()
+  declare requestedByUserId: number | null
+}
+
 export class GatewaySchema extends BaseModel {
-  static $columns = ['ccConnectorId', 'ccIpServiceId', 'ccNetworkId', 'createdAt', 'gatewayEui', 'id', 'lastSeenAt', 'location', 'managementIpAddress', 'name', 'networkLockExpiresAt', 'networkLockToken', 'status', 'updatedAt', 'wanIpAddress', 'wanIpObservedAt'] as const
+  static $columns = ['ccConnectorId', 'ccIpServiceId', 'ccNetworkId', 'createdAt', 'gatewayEui', 'id', 'lastSeenAt', 'location', 'managementIpAddress', 'name', 'networkLockExpiresAt', 'networkLockToken', 'sshHostKeyFingerprint', 'status', 'updatedAt', 'wanIpAddress', 'wanIpObservedAt'] as const
   $columns = GatewaySchema.$columns
   @column()
   declare ccConnectorId: string | null
@@ -127,6 +175,8 @@ export class GatewaySchema extends BaseModel {
   declare networkLockExpiresAt: DateTime | null
   @column()
   declare networkLockToken: string | null
+  @column()
+  declare sshHostKeyFingerprint: string | null
   @column()
   declare status: string
   @column.dateTime({ autoCreate: true, autoUpdate: true })

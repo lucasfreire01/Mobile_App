@@ -2,7 +2,7 @@ import Gateway from '#models/gateway'
 import GatewayNetworkOperation from '#models/gateway_network_operation'
 import CloudConnexaService from '#services/cloud_connexa_service'
 import GatewayService from '#services/gateway_service'
-import { createGatewayValidator } from '#validators/gateway'
+import { createGatewayValidator, updateGatewayValidator } from '#validators/gateway'
 import { Exception } from '@adonisjs/core/exceptions'
 import type { HttpContext } from '@adonisjs/core/http'
 
@@ -141,8 +141,15 @@ export default class GatewaysController {
    * Handle form submission for the edit action
    */
   async update({ params, request, response }: HttpContext) {
+    if (request.input('sshHostKeyFingerprint') !== undefined) {
+      throw new Exception('Use the SSH host key rotation endpoint for this change.', {
+        status: 403,
+        code: 'E_GATEWAY_SSH_HOST_KEY_ROTATION_REQUIRED',
+      })
+    }
+
     const gatewayUpdate = await Gateway.findOrFail(params.id)
-    const payload = await request.validateUsing(createGatewayValidator)
+    const payload = await request.validateUsing(updateGatewayValidator)
 
     gatewayUpdate.merge(payload)
     await gatewayUpdate.save()

@@ -4,6 +4,7 @@ import db from '@adonisjs/lucid/services/db'
 import { DateTime } from 'luxon'
 import Gateway from '#models/gateway'
 import GatewayNetworkOperation from '#models/gateway_network_operation'
+import GatewaySecurityAlert from '#models/gateway_security_alert'
 import User from '#models/user'
 import WorkerHeartbeat from '#models/worker_heartbeat'
 import WorkerHeartbeatService, {
@@ -12,6 +13,7 @@ import WorkerHeartbeatService, {
 
 test.group('Health API', (group) => {
   group.each.setup(async () => {
+    await GatewaySecurityAlert.query().delete()
     await GatewayNetworkOperation.query().delete()
     await Gateway.query().delete()
     await WorkerHeartbeat.query().delete()
@@ -71,6 +73,8 @@ test.group('Health API', (group) => {
       applying: 0,
       failed: 0,
       expiredLeases: 0,
+      recentHostKeyMismatches: 0,
+      openHostKeyMismatchAlerts: 0,
       oldestPendingSeconds: null,
     })
     assert.equal(response.body().worker.name, GATEWAY_NETWORK_OPERATIONS_WORKER)
@@ -140,6 +144,8 @@ test.group('Health API', (group) => {
     assert.equal(response.body().queue.applying, 2)
     assert.equal(response.body().queue.failed, 1)
     assert.equal(response.body().queue.expiredLeases, 1)
+    assert.equal(response.body().queue.recentHostKeyMismatches, 0)
+    assert.equal(response.body().queue.openHostKeyMismatchAlerts, 0)
     const oldestPendingSeconds = response.body().queue.oldestPendingSeconds as number | null
     assert.isNumber(oldestPendingSeconds)
     assert.isAtLeast(oldestPendingSeconds as number, 0)
@@ -158,5 +164,33 @@ test.group('Health API', (group) => {
     assert.equal(response.body().worker.status, 'stale')
     assert.isNull(response.body().worker.lastSeenAt)
     assert.isNull(response.body().worker.ageSeconds)
+  })
+
+  test('reports a recent SSH host key mismatch as degraded', async ({ client, assert }) => {
+    const token = await login(client)
+    await recordWorkerHeartbeat()
+    const gateway = await Gateway.create({
+      name: 'gateway-host-key-mismatch',
+      managementIpAddress: '10.42.0.126',
+      status: 'offline',
+    })
+
+    await GatewayNetworkOperation.create({
+      gatewayId: gateway.id,
+      action: 'apply_dhcp',
+      status: 'failed',
+      attempts: 1,
+      errorCode: 'E_GATEWAY_SSH_HOST_KEY_MISMATCH',
+      errorMessage: 'Gateway SSH host key fingerprint does not match the registered gateway.',
+      finishedAt: DateTime.now(),
+    })
+
+    const response = await client
+      .get('/api/v1/health/queue')
+      .header('authorization', `Bearer ${token}`)
+
+    response.assertStatus(200)
+    assert.equal(response.body().status, 'degraded')
+    assert.equal(response.body().queue.recentHostKeyMismatches, 1)
   })
 })

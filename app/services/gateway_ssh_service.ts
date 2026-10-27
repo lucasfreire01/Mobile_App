@@ -12,8 +12,8 @@ import {
 } from '#services/gateway_network_command_builder'
 import env from '#start/env'
 import { Exception } from '@adonisjs/core/exceptions'
+import { createHash, randomUUID } from 'node:crypto'
 import { readFileSync } from 'node:fs'
-import { randomUUID } from 'node:crypto'
 import { Client } from 'ssh2'
 
 export type { DhcpFallbackSettings, StaticEthernetSettings } from '#services/gateway_network_command_builder'
@@ -25,6 +25,29 @@ const NETWORK_CONFIG_COMMAND = 'uci show network'
 // Example output: "1.0.0.0 via 192.168.11.1 dev eth0 src 192.168.11.10 uid 0"
 const CURRENT_WAN_IP_COMMAND =
   "ip route get 1 2>/dev/null | grep -oE 'src [0-9.]+' | awk '{print $2}'"
+
+export function getSshHostKeyFingerprint(hostKey: Buffer) {
+  return `SHA256:${createHash('sha256').update(hostKey).digest('base64').replace(/=+$/, '')}`
+}
+
+export function isExpectedSshHostKey(hostKey: Buffer, expectedFingerprint: string) {
+  return getSshHostKeyFingerprint(hostKey) === expectedFingerprint.replace(/=+$/, '')
+}
+
+export function createSshHostKeyVerifier(expectedFingerprint: string) {
+  let rejected = false
+
+  return {
+    verify(hostKey: Buffer) {
+      const matches = isExpectedSshHostKey(hostKey, expectedFingerprint)
+      rejected ||= !matches
+      return matches
+    },
+    wasRejected() {
+      return rejected
+    },
+  }
+}
 
 export default class GatewaySshService {
   ensureConnectionAddress(gateway: Gateway) {
@@ -42,14 +65,26 @@ export default class GatewaySshService {
     return readFileSync(env.get('BROWAN_SSH_KEY_PATH'))
   }
 
+  private getExpectedHostKeyFingerprint(gateway: Gateway) {
+    if (!gateway.sshHostKeyFingerprint) {
+      throw new Exception('Gateway SSH host key fingerprint is not configured.', {
+        status: 422,
+        code: 'E_GATEWAY_SSH_HOST_KEY_NOT_PINNED',
+      })
+    }
+
+    return gateway.sshHostKeyFingerprint
+  }
+
   async connect(gateway: Gateway): Promise<Client> {
     const host = this.ensureConnectionAddress(gateway)
 
-    return this.connectToAddress(host)
+    return this.connectToAddress(host, this.getExpectedHostKeyFingerprint(gateway))
   }
 
-  async connectToAddress(host: string): Promise<Client> {
+  async connectToAddress(host: string, expectedHostKeyFingerprint: string): Promise<Client> {
     const privateKey = this.readPrivateKey()
+    const hostKeyVerifier = createSshHostKeyVerifier(expectedHostKeyFingerprint)
 
     return new Promise((resolve, reject) => {
       const client = new Client()
@@ -60,10 +95,17 @@ export default class GatewaySshService {
 
       client.once('error', (err: Error) => {
         reject(
-          new Exception(`SSH connection failed: ${err.message}`, {
+          new Exception(
+            hostKeyVerifier.wasRejected()
+              ? 'Gateway SSH host key fingerprint does not match the registered gateway.'
+              : `SSH connection failed: ${err.message}`,
+            {
             status: 502,
-            code: 'E_GATEWAY_SSH_CONNECTION_FAILED',
-          })
+              code: hostKeyVerifier.wasRejected()
+                ? 'E_GATEWAY_SSH_HOST_KEY_MISMATCH'
+                : 'E_GATEWAY_SSH_CONNECTION_FAILED',
+            }
+          )
         )
       })
 
@@ -73,20 +115,27 @@ export default class GatewaySshService {
         username: env.get('BROWAN_SSH_USERNAME'),
         privateKey,
         readyTimeout: 10_000,
+        hostVerifier: (hostKey: Buffer) => hostKeyVerifier.verify(hostKey),
       })
     })
   }
 
   private async runCommand(gateway: Gateway, command: string, errorCode: string): Promise<string> {
-    return this.runCommandAtAddress(this.ensureConnectionAddress(gateway), command, errorCode)
+    return this.runCommandAtAddress(
+      gateway,
+      this.ensureConnectionAddress(gateway),
+      command,
+      errorCode
+    )
   }
 
   private async runCommandAtAddress(
+    gateway: Gateway,
     address: string,
     command: string,
     errorCode: string
   ): Promise<string> {
-    const client = await this.connectToAddress(address)
+    const client = await this.connectToAddress(address, this.getExpectedHostKeyFingerprint(gateway))
 
     return new Promise((resolve, reject) => {
       let settled = false
@@ -197,8 +246,9 @@ export default class GatewaySshService {
     )
   }
 
-  async disableDhcpFallbackAtAddress(address: string): Promise<void> {
+  async disableDhcpFallbackAtAddress(gateway: Gateway, address: string): Promise<void> {
     await this.runCommandAtAddress(
+      gateway,
       address,
       buildDisableDhcpFallbackCommand(),
       'E_GATEWAY_DHCP_FALLBACK_DISABLE_FAILED'
@@ -215,8 +265,9 @@ export default class GatewaySshService {
     return token
   }
 
-  async cancelStaticRollback(address: string, token: string): Promise<void> {
+  async cancelStaticRollback(gateway: Gateway, address: string, token: string): Promise<void> {
     await this.runCommandAtAddress(
+      gateway,
       address,
       buildCancelStaticRollbackCommand(token),
       'E_GATEWAY_STATIC_ROLLBACK_CANCEL_FAILED'
@@ -231,10 +282,18 @@ export default class GatewaySshService {
     )
   }
 
-  async waitForConnection(address: string, attempts = 12, delayMs = 5_000): Promise<void> {
+  async waitForConnection(
+    gateway: Gateway,
+    address: string,
+    attempts = 12,
+    delayMs = 5_000
+  ): Promise<void> {
     for (let attempt = 1; attempt <= attempts; attempt++) {
       try {
-        const client = await this.connectToAddress(address)
+        const client = await this.connectToAddress(
+          address,
+          this.getExpectedHostKeyFingerprint(gateway)
+        )
         client.end()
         return
       } catch {

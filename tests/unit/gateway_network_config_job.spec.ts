@@ -6,11 +6,13 @@ import GatewayNetworkConfigJob, {
 } from '#jobs/gateway_network_config'
 import Gateway from '#models/gateway'
 import GatewayNetworkOperation from '#models/gateway_network_operation'
+import GatewaySecurityAlert from '#models/gateway_security_alert'
 
 const PROCESSING_TOKEN = '5e9f4c53-22f4-4da9-988d-84df68caed58'
 
 test.group('GatewayNetworkConfigJob', (group) => {
   group.each.setup(async () => {
+    await GatewaySecurityAlert.query().delete()
     await GatewayNetworkOperation.query().delete()
     await Gateway.query().delete()
   })
@@ -334,6 +336,42 @@ test.group('GatewayNetworkConfigJob', (group) => {
     ])
     assert.deepEqual(operation.previousPayload, firstSnapshot)
     assert.equal(operation.status, 'applied')
+  })
+
+  test('fails immediately when the gateway SSH host key does not match', async ({ assert }) => {
+    const gateway = await createGateway()
+    const operation = await createOperation(gateway.id, {
+      mode: 'dhcp',
+      dhcpFallbackEnabled: false,
+      staticIpAddress: null,
+      staticPrefixLength: null,
+      staticGateway: null,
+      primaryDns: null,
+      secondaryDns: null,
+    })
+    const dependencies = createDependencies()
+    dependencies.gatewaySshService!.disableDhcpFallback = async () => {
+      throw new Exception('Gateway SSH host key fingerprint does not match.', {
+        status: 502,
+        code: 'E_GATEWAY_SSH_HOST_KEY_MISMATCH',
+      })
+    }
+
+    const error = await captureException(() =>
+      new GatewayNetworkConfigJob(operation.id, PROCESSING_TOKEN, dependencies).run()
+    )
+    await operation.refresh()
+
+    assert.equal(error.code, 'E_GATEWAY_SSH_HOST_KEY_MISMATCH')
+    assert.equal(operation.status, 'failed')
+    assert.equal(operation.attempts, 1)
+    assert.isNull(operation.availableAt)
+    assert.isNotNull(operation.finishedAt)
+
+    const alert = await GatewaySecurityAlert.query().where('operation_id', operation.id).firstOrFail()
+    assert.equal(alert.gatewayId, gateway.id)
+    assert.equal(alert.type, 'ssh_host_key_mismatch')
+    assert.equal(alert.status, 'open')
   })
 
   test('fails permanently for an invalid payload without calling SSH', async ({ assert }) => {

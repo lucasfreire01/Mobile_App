@@ -4,6 +4,7 @@ import type { HasMany, HasOne } from '@adonisjs/lucid/types/relations'
 import { DateTime } from 'luxon'
 import GatewayEthernetConfig from './gateway_ethernet_config.ts'
 import GatewayNetworkOperation from '#models/gateway_network_operation'
+import GatewaySshHostKeyRotation from '#models/gateway_ssh_host_key_rotation'
 
 export default class Gateway extends GatewaySchema {
   @column({ serializeAs: null })
@@ -16,4 +17,7 @@ export default class Gateway extends GatewaySchema {
   declare ethernetConfig: HasOne<typeof GatewayEthernetConfig>
   @hasMany(() => GatewayNetworkOperation)
   declare networkOperations: HasMany<typeof GatewayNetworkOperation>
+
+  @hasMany(() => GatewaySshHostKeyRotation)
+  declare sshHostKeyRotations: HasMany<typeof GatewaySshHostKeyRotation>
 }

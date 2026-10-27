@@ -6,6 +6,7 @@ import { Exception } from '@adonisjs/core/exceptions'
 import { DateTime } from 'luxon'
 import GatewayLockService from '#services/gateway_lock_service'
 import GatewayNetworkOperation from '#models/gateway_network_operation'
+import GatewaySecurityAlertService from '#services/gateway_security_alert_service'
 import {
   MAX_ATTEMPTS,
   BACKOFF_BASE_SECONDS,
@@ -13,6 +14,7 @@ import {
 import logger from '@adonisjs/core/services/logger'
 
 const STATIC_ROLLBACK_RETRY_DELAY_SECONDS = STATIC_ROLLBACK_TIMEOUT_SECONDS + BACKOFF_BASE_SECONDS
+const NON_RETRYABLE_ERROR_CODES = new Set(['E_GATEWAY_SSH_HOST_KEY_MISMATCH'])
 
 type GatewayNetworkConfigPayload = {
   mode: 'dhcp' | 'static'
@@ -225,12 +227,12 @@ export default class GatewayNetworkConfigJob {
         secondaryDns: payload.secondaryDns,
       })
 
-      await sshService.waitForConnection(nextAddress)
+      await sshService.waitForConnection(gateway, nextAddress)
 
-      await sshService.cancelStaticRollback(nextAddress, rollbackToken)
+      await sshService.cancelStaticRollback(gateway, nextAddress, rollbackToken)
 
       // A static primary configuration must not retain a DHCP recovery policy.
-      await sshService.disableDhcpFallbackAtAddress(nextAddress)
+      await sshService.disableDhcpFallbackAtAddress(gateway, nextAddress)
 
       gateway.managementIpAddress = nextAddress
       gateway.wanIpAddress = nextAddress
@@ -272,7 +274,11 @@ export default class GatewayNetworkConfigJob {
     }
   }
   private shouldRetry(error: unknown) {
-    return error instanceof Exception && error.status >= 500
+    return (
+      error instanceof Exception &&
+      error.status >= 500 &&
+      !NON_RETRYABLE_ERROR_CODES.has(String(error.code))
+    )
   }
 
   private async markOperationAsApplied(operation: GatewayNetworkOperation) {
@@ -346,6 +352,22 @@ export default class GatewayNetworkConfigJob {
     operation.availableAt = null
     operation.finishedAt = DateTime.now()
     await operation.save()
+
+    if (errorCode === 'E_GATEWAY_SSH_HOST_KEY_MISMATCH') {
+      try {
+        await new GatewaySecurityAlertService().openSshHostKeyMismatch(operation)
+      } catch (alertError) {
+        logger.error(
+          {
+            event: 'gateway_security_alert_creation_failed',
+            operationId: operation.id,
+            gatewayId: operation.gatewayId,
+            error: alertError,
+          },
+          'Could not persist gateway security alert'
+        )
+      }
+    }
 
     logger.error(
       {

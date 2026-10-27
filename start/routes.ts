@@ -29,6 +29,25 @@ router
     router.resource('gateways', controllers.Gateways).apiOnly().use('*', middleware.auth())
 
     router
+      .post('gateways/:id/ssh-host-key/rotate', [controllers.GatewaySshHostKeys, 'rotate'])
+      .use(middleware.auth())
+
+    router
+      .get('gateways/:id/ssh-host-key/rotations', [controllers.GatewaySshHostKeys, 'index'])
+      .use(middleware.auth())
+
+    router
+      .get('gateways/:id/security-alerts', [controllers.GatewaySecurityAlerts, 'index'])
+      .use(middleware.auth())
+
+    router
+      .post('gateways/:id/security-alerts/:alertId/acknowledge', [
+        controllers.GatewaySecurityAlerts,
+        'acknowledge',
+      ])
+      .use(middleware.auth())
+
+    router
       .get('gateways/:id/ethernet/hostname', [controllers.GatewayEthernets, 'hostname'])
       .use(middleware.auth())
 
