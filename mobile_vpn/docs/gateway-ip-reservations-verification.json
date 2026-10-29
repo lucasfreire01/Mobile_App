@@ -1,0 +1,28 @@
+{
+  "verifiedAt": "2026-10-29T14:03:46.283Z",
+  "scope": "local only",
+  "uniqueIndexPresent": true,
+  "reservations": 0,
+  "verification": {
+    "elevatedPrivileges": false,
+    "publicSchemaCreate": false,
+    "migrationHistoryAccess": false,
+    "tablePolicy": "verified"
+  },
+  "apiHealth": 200,
+  "regression": {
+    "startedAt": "2026-10-29T13:59:59.657Z",
+    "database": "saganexus_test_ca4a24d60fec3a2a3eac963b",
+    "testRoleSuperuser": false,
+    "credentialsPersisted": false,
+    "operationalDatabaseUsedForTests": false,
+    "operationalTableAccessDenied": true,
+    "exitCode": 0,
+    "testsPassed": 73,
+    "databaseRemoved": true,
+    "roleRemoved": true,
+    "finishedAt": "2026-10-29T14:00:07.199Z"
+  },
+  "cloudConnexaRealCalls": "not executed",
+  "gatewayConfigurationApply": "not executed"
+}

@@ -1,0 +1,87 @@
+{
+  "verifiedAt": "2026-10-29T13:31:38.594Z",
+  "scope": "local environment only",
+  "runtimeRole": "saganexus_runtime",
+  "appUsesRuntime": true,
+  "administratorDistinct": true,
+  "verification": {
+    "elevatedPrivileges": false,
+    "publicSchemaCreate": false,
+    "migrationHistoryAccess": false,
+    "tablePolicy": "verified"
+  },
+  "tablePrivileges": {
+    "users": [
+      "SELECT"
+    ],
+    "auth_access_tokens": [
+      "SELECT",
+      "INSERT",
+      "UPDATE",
+      "DELETE"
+    ],
+    "gateways": [
+      "SELECT",
+      "INSERT",
+      "UPDATE",
+      "DELETE"
+    ],
+    "gateway_ethernet_configs": [
+      "SELECT",
+      "INSERT",
+      "UPDATE"
+    ],
+    "gateway_network_operations": [
+      "SELECT",
+      "INSERT",
+      "UPDATE"
+    ],
+    "gateway_security_alerts": [
+      "SELECT",
+      "INSERT",
+      "UPDATE"
+    ],
+    "gateway_ssh_host_key_rotations": [
+      "SELECT",
+      "INSERT"
+    ],
+    "worker_heartbeats": [
+      "SELECT",
+      "INSERT",
+      "UPDATE"
+    ],
+    "rate_limits": [
+      "SELECT",
+      "INSERT",
+      "UPDATE",
+      "DELETE"
+    ]
+  },
+  "activeDatabaseClients": [
+    {
+      "usename": "saganexus_runtime",
+      "connections": 3
+    }
+  ],
+  "privateFilesMode600": true,
+  "dataCounts": {
+    "gateways": 1,
+    "operations": 19,
+    "alerts": 0
+  },
+  "checks": {
+    "permissionIntegration": "passed; synthetic data rolled back",
+    "administratorMigrationStatus": "passed; migrations not executed",
+    "typecheck": "passed",
+    "changedFilesLint": "passed",
+    "build": "passed; final scripts match build copies; no private env copied",
+    "fullLint": {
+      "errors": 25,
+      "newErrors": 0
+    }
+  },
+  "remoteGatewayApply": "not executed",
+  "production": "not changed",
+  "connectionCountIncludesVerifier": true,
+  "finalChecksAt": "2026-10-29T13:33:34.523Z"
+}

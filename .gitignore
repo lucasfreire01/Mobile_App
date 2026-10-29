@@ -1,5 +1,6 @@
 # Dependências
 node_modules/
+/.tools/
 
 # Variáveis de ambiente e segredos
 .env

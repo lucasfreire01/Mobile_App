@@ -1,17 +1,18 @@
 import { middleware } from '#start/kernel'
 import router from '@adonisjs/core/services/router'
 import { controllers } from '#generated/controllers'
+import { loginThrottle } from '#start/limiter'
 
 router.get('/', () => {
   return { hello: 'world' }
 })
+router.get('/health', [controllers.Health, 'show'])
 
 router
   .group(() => {
     router
       .group(() => {
-        router.post('signup', [controllers.NewAccount, 'store'])
-        router.post('login', [controllers.AccessTokens, 'store'])
+        router.post('login', [controllers.AccessTokens, 'store']).use(loginThrottle)
       })
       .prefix('auth')
       .as('auth')
@@ -25,17 +26,38 @@ router
       .as('profile')
       .use(middleware.auth())
 
-    router.resource('gateways', controllers.Gateways).apiOnly().use('*', middleware.auth())
+    router
+      .group(() => {
+        router.resource('gateways', controllers.Gateways).apiOnly()
+        router.post('users', [() => import('#controllers/users_controller'), 'store'])
 
-    router
-      .get('gateways/:id/ethernet', [controllers.GatewayEthernets, 'show'])
-      .use(middleware.auth())
+        router.post('gateways/:id/ssh-host-key/rotate', [controllers.GatewaySshHostKeys, 'rotate'])
 
-    router
-      .put('gateways/:id/ethernet', [controllers.GatewayEthernets, 'update'])
-      .use(middleware.auth())
-    router
-      .get('gateways/:id/ethernet/hostname', [controllers.GatewayEthernets, 'hostname'])
-      .use(middleware.auth())
+        router.get('gateways/:id/ssh-host-key/rotations', [controllers.GatewaySshHostKeys, 'index'])
+
+        router.get('gateways/:id/security-alerts', [controllers.GatewaySecurityAlerts, 'index'])
+
+        router.post('gateways/:id/security-alerts/:alertId/acknowledge', [
+          controllers.GatewaySecurityAlerts,
+          'acknowledge',
+        ])
+
+        router.get('gateways/:id/ethernet/hostname', [controllers.GatewayEthernets, 'hostname'])
+
+        router.get('gateways/:id/vpn-profile', [controllers.Gateways, 'vpnProfile'])
+
+        router.get('gateways/:id/network-operations', [controllers.Gateways, 'networkOperations'])
+
+        router.get('gateways/:id/ethernet/device', [controllers.GatewayEthernets, 'device'])
+
+        router.post('gateways/:id/ethernet/apply', [controllers.GatewayEthernets, 'apply'])
+
+        router
+          .resource('gateways.ethernet', controllers.GatewayEthernets)
+          .apiOnly()
+          .only(['index', 'store', 'show', 'update'])
+        router.get('health/queue', [controllers.QueueHealths, 'show'])
+      })
+      .use([middleware.auth(), middleware.admin()])
   })
   .prefix('/api/v1')

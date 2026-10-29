@@ -1,0 +1,13 @@
+{
+  "startedAt": "2026-10-29T14:43:25.802Z",
+  "database": "saganexus_test_62f6e48e71761c8c4beb1b5c",
+  "testRoleSuperuser": false,
+  "credentialsPersisted": false,
+  "operationalDatabaseUsedForTests": false,
+  "operationalTableAccessDenied": true,
+  "exitCode": 0,
+  "testsPassed": 85,
+  "databaseRemoved": true,
+  "roleRemoved": true,
+  "finishedAt": "2026-10-29T14:43:31.116Z"
+}

@@ -16,6 +16,15 @@ export const signupValidator = vine.create({
   passwordConfirmation: password().sameAs('password'),
 })
 
+/** Validate an administrator-created account. */
+export const createUserValidator = vine.create({
+  fullName: vine.string().trim().minLength(2).maxLength(120),
+  email: email().unique({ table: 'users', column: 'email' }),
+  password: password(),
+  passwordConfirmation: password().sameAs('password'),
+  isAdmin: vine.boolean().optional(),
+})
+
 /**
  * Validator to use before validating user credentials
  * during login

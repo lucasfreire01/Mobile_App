@@ -6,12 +6,13 @@ export default class CreateDevelopmentUserSeeder {
     const email = env.get('SEED_ADMIN_EMAIL').toLowerCase()
     const password = env.get('SEED_ADMIN_PASSWORD').release()
 
-    await User.firstOrCreate(
+    await User.updateOrCreate(
       { email },
       {
         email,
         fullName: 'Administrador de desenvolvimento',
         password,
+        isAdmin: true,
       }
     )
   }

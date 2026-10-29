@@ -1,0 +1,410 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-29T13:05:23.389752+00:00",
+  "title": "Design System: SagaNexus",
+  "extensions": {
+    "colorMeta": {
+      "shell": {
+        "role": "primary",
+        "displayName": "Shell",
+        "tonalRamp": [
+          "oklch(15% 0.0167 243.87)",
+          "oklch(26% 0.0362 243.87)",
+          "oklch(38% 0.0501 243.87)",
+          "oklch(50% 0.0556 243.87)",
+          "oklch(62% 0.0556 243.87)",
+          "oklch(74% 0.0445 243.87)",
+          "oklch(85% 0.0278 243.87)",
+          "oklch(95% 0.0083 243.87)"
+        ],
+        "tonalRampPurpose": "Illustrative panel ramp; not implemented application tokens."
+      },
+      "primary": {
+        "role": "primary",
+        "displayName": "Primary",
+        "tonalRamp": [
+          "oklch(15% 0.0206 229.35)",
+          "oklch(26% 0.0447 229.35)",
+          "oklch(38% 0.0619 229.35)",
+          "oklch(50% 0.0688 229.35)",
+          "oklch(62% 0.0688 229.35)",
+          "oklch(74% 0.0551 229.35)",
+          "oklch(85% 0.0344 229.35)",
+          "oklch(95% 0.0103 229.35)"
+        ],
+        "tonalRampPurpose": "Illustrative panel ramp; not implemented application tokens."
+      },
+      "canvas": {
+        "role": "neutral",
+        "displayName": "Canvas",
+        "tonalRamp": [
+          "oklch(15% 0.0022 132.42)",
+          "oklch(26% 0.0048 132.42)",
+          "oklch(38% 0.0066 132.42)",
+          "oklch(50% 0.0073 132.42)",
+          "oklch(62% 0.0073 132.42)",
+          "oklch(74% 0.0059 132.42)",
+          "oklch(85% 0.0037 132.42)",
+          "oklch(95% 0.0011 132.42)"
+        ],
+        "tonalRampPurpose": "Illustrative panel ramp; not implemented application tokens."
+      },
+      "selection": {
+        "role": "primary",
+        "displayName": "Selection",
+        "tonalRamp": [
+          "oklch(15% 0.0033 182.87)",
+          "oklch(26% 0.0071 182.87)",
+          "oklch(38% 0.0099 182.87)",
+          "oklch(50% 0.0110 182.87)",
+          "oklch(62% 0.0110 182.87)",
+          "oklch(74% 0.0088 182.87)",
+          "oklch(85% 0.0055 182.87)",
+          "oklch(95% 0.0016 182.87)"
+        ],
+        "tonalRampPurpose": "Illustrative panel ramp; not implemented application tokens."
+      },
+      "online": {
+        "role": "secondary",
+        "displayName": "Online",
+        "tonalRamp": [
+          "oklch(15% 0.0315 168.93)",
+          "oklch(26% 0.0683 168.93)",
+          "oklch(38% 0.0945 168.93)",
+          "oklch(50% 0.1050 168.93)",
+          "oklch(62% 0.1050 168.93)",
+          "oklch(74% 0.0840 168.93)",
+          "oklch(85% 0.0525 168.93)",
+          "oklch(95% 0.0158 168.93)"
+        ],
+        "tonalRampPurpose": "Illustrative panel ramp; not implemented application tokens."
+      },
+      "apply": {
+        "role": "secondary",
+        "displayName": "Apply",
+        "tonalRamp": [
+          "oklch(15% 0.0249 169.62)",
+          "oklch(26% 0.0540 169.62)",
+          "oklch(38% 0.0747 169.62)",
+          "oklch(50% 0.0830 169.62)",
+          "oklch(62% 0.0830 169.62)",
+          "oklch(74% 0.0664 169.62)",
+          "oklch(85% 0.0415 169.62)",
+          "oklch(95% 0.0125 169.62)"
+        ],
+        "tonalRampPurpose": "Illustrative panel ramp; not implemented application tokens."
+      },
+      "success-surface": {
+        "role": "secondary",
+        "displayName": "Success Surface",
+        "tonalRamp": [
+          "oklch(15% 0.0065 163.05)",
+          "oklch(26% 0.0140 163.05)",
+          "oklch(38% 0.0194 163.05)",
+          "oklch(50% 0.0216 163.05)",
+          "oklch(62% 0.0216 163.05)",
+          "oklch(74% 0.0172 163.05)",
+          "oklch(85% 0.0108 163.05)",
+          "oklch(95% 0.0032 163.05)"
+        ],
+        "tonalRampPurpose": "Illustrative panel ramp; not implemented application tokens."
+      },
+      "white": {
+        "role": "neutral",
+        "displayName": "White",
+        "tonalRamp": [
+          "oklch(15% 0.0000 89.88)",
+          "oklch(26% 0.0000 89.88)",
+          "oklch(38% 0.0000 89.88)",
+          "oklch(50% 0.0000 89.88)",
+          "oklch(62% 0.0000 89.88)",
+          "oklch(74% 0.0000 89.88)",
+          "oklch(85% 0.0000 89.88)",
+          "oklch(95% 0.0000 89.88)"
+        ],
+        "tonalRampPurpose": "Illustrative panel ramp; not implemented application tokens."
+      },
+      "ink": {
+        "role": "neutral",
+        "displayName": "Ink",
+        "tonalRamp": [
+          "oklch(15% 0.0119 265.75)",
+          "oklch(26% 0.0259 265.75)",
+          "oklch(38% 0.0358 265.75)",
+          "oklch(50% 0.0398 265.75)",
+          "oklch(62% 0.0398 265.75)",
+          "oklch(74% 0.0319 265.75)",
+          "oklch(85% 0.0199 265.75)",
+          "oklch(95% 0.0060 265.75)"
+        ],
+        "tonalRampPurpose": "Illustrative panel ramp; not implemented application tokens."
+      },
+      "muted": {
+        "role": "neutral",
+        "displayName": "Muted",
+        "tonalRamp": [
+          "oklch(15% 0.0112 257.28)",
+          "oklch(26% 0.0243 257.28)",
+          "oklch(38% 0.0337 257.28)",
+          "oklch(50% 0.0374 257.28)",
+          "oklch(62% 0.0374 257.28)",
+          "oklch(74% 0.0300 257.28)",
+          "oklch(85% 0.0187 257.28)",
+          "oklch(95% 0.0056 257.28)"
+        ],
+        "tonalRampPurpose": "Illustrative panel ramp; not implemented application tokens."
+      },
+      "placeholder": {
+        "role": "neutral",
+        "displayName": "Placeholder",
+        "tonalRamp": [
+          "oklch(15% 0.0122 257.42)",
+          "oklch(26% 0.0265 257.42)",
+          "oklch(38% 0.0366 257.42)",
+          "oklch(50% 0.0407 257.42)",
+          "oklch(62% 0.0407 257.42)",
+          "oklch(74% 0.0326 257.42)",
+          "oklch(85% 0.0204 257.42)",
+          "oklch(95% 0.0061 257.42)"
+        ],
+        "tonalRampPurpose": "Illustrative panel ramp; not implemented application tokens."
+      },
+      "field-border": {
+        "role": "neutral",
+        "displayName": "Field Border",
+        "tonalRamp": [
+          "oklch(15% 0.0060 252.89)",
+          "oklch(26% 0.0129 252.89)",
+          "oklch(38% 0.0179 252.89)",
+          "oklch(50% 0.0198 252.89)",
+          "oklch(62% 0.0198 252.89)",
+          "oklch(74% 0.0159 252.89)",
+          "oklch(85% 0.0099 252.89)",
+          "oklch(95% 0.0030 252.89)"
+        ],
+        "tonalRampPurpose": "Illustrative panel ramp; not implemented application tokens."
+      },
+      "divider": {
+        "role": "neutral",
+        "displayName": "Divider",
+        "tonalRamp": [
+          "oklch(15% 0.0051 168.44)",
+          "oklch(26% 0.0111 168.44)",
+          "oklch(38% 0.0154 168.44)",
+          "oklch(50% 0.0171 168.44)",
+          "oklch(62% 0.0171 168.44)",
+          "oklch(74% 0.0137 168.44)",
+          "oklch(85% 0.0086 168.44)",
+          "oklch(95% 0.0026 168.44)"
+        ],
+        "tonalRampPurpose": "Illustrative panel ramp; not implemented application tokens."
+      },
+      "shell-muted": {
+        "role": "neutral",
+        "displayName": "Shell Muted",
+        "tonalRamp": [
+          "oklch(15% 0.0074 219.77)",
+          "oklch(26% 0.0161 219.77)",
+          "oklch(38% 0.0223 219.77)",
+          "oklch(50% 0.0247 219.77)",
+          "oklch(62% 0.0247 219.77)",
+          "oklch(74% 0.0198 219.77)",
+          "oklch(85% 0.0124 219.77)",
+          "oklch(95% 0.0037 219.77)"
+        ],
+        "tonalRampPurpose": "Illustrative panel ramp; not implemented application tokens."
+      },
+      "offline-surface": {
+        "role": "neutral",
+        "displayName": "Offline Surface",
+        "tonalRamp": [
+          "oklch(15% 0.0021 247.90)",
+          "oklch(26% 0.0045 247.90)",
+          "oklch(38% 0.0062 247.90)",
+          "oklch(50% 0.0069 247.90)",
+          "oklch(62% 0.0069 247.90)",
+          "oklch(74% 0.0055 247.90)",
+          "oklch(85% 0.0034 247.90)",
+          "oklch(95% 0.0010 247.90)"
+        ],
+        "tonalRampPurpose": "Illustrative panel ramp; not implemented application tokens."
+      },
+      "processing-surface": {
+        "role": "secondary",
+        "displayName": "Processing Surface",
+        "tonalRamp": [
+          "oklch(15% 0.0064 95.28)",
+          "oklch(26% 0.0139 95.28)",
+          "oklch(38% 0.0193 95.28)",
+          "oklch(50% 0.0214 95.28)",
+          "oklch(62% 0.0214 95.28)",
+          "oklch(74% 0.0171 95.28)",
+          "oklch(85% 0.0107 95.28)",
+          "oklch(95% 0.0032 95.28)"
+        ],
+        "tonalRampPurpose": "Illustrative panel ramp; not implemented application tokens."
+      },
+      "processing-ink": {
+        "role": "secondary",
+        "displayName": "Processing Ink",
+        "tonalRamp": [
+          "oklch(15% 0.0360 46.20)",
+          "oklch(26% 0.0780 46.20)",
+          "oklch(38% 0.1080 46.20)",
+          "oklch(50% 0.1200 46.20)",
+          "oklch(62% 0.1200 46.20)",
+          "oklch(74% 0.0960 46.20)",
+          "oklch(85% 0.0600 46.20)",
+          "oklch(95% 0.0180 46.20)"
+        ],
+        "tonalRampPurpose": "Illustrative panel ramp; not implemented application tokens."
+      },
+      "error-surface": {
+        "role": "secondary",
+        "displayName": "Error Surface",
+        "tonalRamp": [
+          "oklch(15% 0.0039 17.38)",
+          "oklch(26% 0.0084 17.38)",
+          "oklch(38% 0.0117 17.38)",
+          "oklch(50% 0.0129 17.38)",
+          "oklch(62% 0.0129 17.38)",
+          "oklch(74% 0.0104 17.38)",
+          "oklch(85% 0.0065 17.38)",
+          "oklch(95% 0.0019 17.38)"
+        ],
+        "tonalRampPurpose": "Illustrative panel ramp; not implemented application tokens."
+      },
+      "error-ink": {
+        "role": "secondary",
+        "displayName": "Error Ink",
+        "tonalRamp": [
+          "oklch(15% 0.0360 26.90)",
+          "oklch(26% 0.0780 26.90)",
+          "oklch(38% 0.1080 26.90)",
+          "oklch(50% 0.1200 26.90)",
+          "oklch(62% 0.1200 26.90)",
+          "oklch(74% 0.0960 26.90)",
+          "oklch(85% 0.0600 26.90)",
+          "oklch(95% 0.0180 26.90)"
+        ],
+        "tonalRampPurpose": "Illustrative panel ramp; not implemented application tokens."
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Display",
+        "purpose": "Abertura; fonte padrão de plataforma, sem custom font."
+      }
+    },
+    "shadows": [],
+    "motion": [
+      {
+        "name": "loading-half-cycle",
+        "value": "850ms",
+        "purpose": "Cada trecho do pulso; desativado com movimento reduzido."
+      },
+      {
+        "name": "splash-mark",
+        "value": "360ms",
+        "purpose": "Entrada do símbolo."
+      },
+      {
+        "name": "splash-name",
+        "value": "480ms",
+        "purpose": "Entrada do nome."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "md",
+        "value": "768px"
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Ação principal",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Tradução do controle nativo; hover e foco visível são affordances da prévia HTML.",
+      "html": "<button class=\"ds-button-primary\">Ação principal</button>",
+      "css": ".ds-button-primary{font:600 14px system-ui;border-radius:12px;min-height:48px;padding:12px 20px;cursor:pointer;background:#164f66;color:#ffffff;border:1px solid transparent}.ds-button-primary:hover{filter:brightness(.96)}.ds-button-primary:focus-visible{outline:2px solid #164f66;outline-offset:3px}.ds-button-primary:active{filter:brightness(.85)}"
+    },
+    {
+      "name": "Aplicar",
+      "kind": "button",
+      "refersTo": "button-apply",
+      "description": "Tradução do controle nativo; hover e foco visível são affordances da prévia HTML.",
+      "html": "<button class=\"ds-button-apply\">Aplicar</button>",
+      "css": ".ds-button-apply{font:600 14px system-ui;border-radius:12px;min-height:48px;padding:12px 20px;cursor:pointer;background:#11634d;color:#ffffff;border:1px solid transparent}.ds-button-apply:hover{filter:brightness(.96)}.ds-button-apply:focus-visible{outline:2px solid #164f66;outline-offset:3px}.ds-button-apply:active{filter:brightness(.85)}"
+    },
+    {
+      "name": "Salvar",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "Tradução do controle nativo; hover e foco visível são affordances da prévia HTML.",
+      "html": "<button class=\"ds-button-secondary\">Salvar</button>",
+      "css": ".ds-button-secondary{font:600 14px system-ui;border-radius:12px;min-height:48px;padding:12px 20px;cursor:pointer;background:#ffffff;color:#164f66;border:1px solid #164f66}.ds-button-secondary:hover{filter:brightness(.96)}.ds-button-secondary:focus-visible{outline:2px solid #164f66;outline-offset:3px}.ds-button-secondary:active{filter:brightness(.85)}"
+    },
+    {
+      "name": "Campo",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "Campo branco com contorno; foco azul observado no campo de e-mail.",
+      "html": "<label class=\"ds-field\">E-mail<input type=\"email\" placeholder=\"nome@empresa.com\" /></label>",
+      "css": ".ds-field{display:grid;gap:8px;font:600 14px system-ui;color:#334155}.ds-field input{min-height:56px;padding:0 16px;border:1px solid #cbd5e1;border-radius:12px;background:white;color:#0f172a;font:400 16px system-ui}.ds-field input::placeholder{color:#64748b}.ds-field input:hover{border-color:#64748b}.ds-field input:focus-visible{border-color:#164f66;outline:2px solid #164f66;outline-offset:2px}"
+    },
+    {
+      "name": "Estado online",
+      "kind": "chip",
+      "refersTo": "status-online",
+      "description": "Ponto e rótulo legível de presença; indicador sem interação.",
+      "html": "<span class=\"ds-online\"><i></i>Online</span>",
+      "css": ".ds-online{display:inline-flex;align-items:center;gap:8px;border-radius:9999px;padding:6px 12px;background:#e1f2e9;color:#11634d;font:600 12px system-ui}.ds-online i{width:8px;height:8px;border-radius:50%;background:#138466}"
+    },
+    {
+      "name": "Recipiente vazio",
+      "kind": "card",
+      "refersTo": "empty-container",
+      "description": "Recipiente plano observado no histórico vazio.",
+      "html": "<div class=\"ds-empty\">Nenhuma operação encontrada.</div>",
+      "css": ".ds-empty{padding:20px;border:1px solid #e2e8f0;border-radius:16px;background:white;color:#475569;font:400 14px system-ui}"
+    },
+    {
+      "name": "Ação de navegação",
+      "kind": "nav",
+      "refersTo": "button-header",
+      "description": "Ação textual translúcida compartilhada pelos cabeçalhos; affordance web de foco na prévia.",
+      "html": "<nav class=\"ds-nav\"><button>Voltar</button></nav>",
+      "css": ".ds-nav{background:#102f46;padding:16px;display:flex;justify-content:flex-end}.ds-nav button{min-height:48px;padding:0 16px;border:0;border-radius:12px;background:rgba(255,255,255,.1);color:white;font:600 14px system-ui;cursor:pointer}.ds-nav button:hover,.ds-nav button:active{background:rgba(255,255,255,.2)}.ds-nav button:focus-visible{outline:2px solid white;outline-offset:3px}"
+    }
+  ],
+  "narrative": {
+    "northStar": "Rede em movimento",
+    "overview": "Rede em movimento combina uma estrutura azul profunda com superfícies minerais claras e leitura operacional direta. O movimento aparece no sinal de estado e nas transições da marca; a informação permanece estável e legível.\n\nA logo oficial permanece íntegra, sobre uma pequena reserva branca. A tipografia do sistema e as superfícies planas mantêm a identidade próxima do trabalho cotidiano.",
+    "keyCharacteristics": [
+      "Azul profundo como estrutura; mineral claro como área de trabalho.",
+      "Estados com texto e cor, sem depender apenas de pigmento.",
+      "Controles arredondados e hierarquia tipográfica direta."
+    ],
+    "rules": [
+      {
+        "name": "The Confirmed State Rule",
+        "body": "O verde de sucesso acompanha confirmação; fila e aplicação em curso conservam estados próprios.",
+        "section": "colors"
+      }
+    ],
+    "dos": [
+      "Do preservar a logo oficial em sua reserva branca.",
+      "Do combinar texto com cor nos estados.",
+      "Do usar a tipografia do sistema para leitura operacional.",
+      "Do respeitar a preferência de movimento reduzido."
+    ],
+    "donts": [
+      "Don't redesenhar ou recolorir a logo.",
+      "Don't usar verde de sucesso para uma operação apenas enviada.",
+      "Don't transformar a configuração darkMode do Tailwind em alegação de tema escuro implementado.",
+      "Don't tratar prévias web como validação em Android ou iOS."
+    ]
+  }
+}

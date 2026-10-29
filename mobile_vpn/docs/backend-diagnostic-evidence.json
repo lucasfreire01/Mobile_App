@@ -1,0 +1,815 @@
+{
+  "collectedAt": "2026-10-29T13:14:02.452Z",
+  "scope": "local read-only snapshot",
+  "database": {
+    "version": "17.11",
+    "read_only": "on",
+    "max_connections": 100,
+    "diagnostic_statement_timeout": "3s"
+  },
+  "applicationRole": {
+    "rolsuper": true,
+    "rolcreatedb": true,
+    "rolcreaterole": true,
+    "rolbypassrls": true
+  },
+  "connections": [
+    {
+      "state": "active",
+      "connections": 1
+    },
+    {
+      "state": "idle",
+      "connections": 2
+    }
+  ],
+  "tableStats": [
+    {
+      "relname": "adonis_schema",
+      "n_live_tup": "24",
+      "n_dead_tup": "0",
+      "seq_scan": "64",
+      "idx_scan": "1",
+      "total_bytes": "24576",
+      "last_autoanalyze": null,
+      "last_analyze": null
+    },
+    {
+      "relname": "adonis_schema_versions",
+      "n_live_tup": "1",
+      "n_dead_tup": "1",
+      "seq_scan": "20",
+      "idx_scan": "1",
+      "total_bytes": "24576",
+      "last_autoanalyze": null,
+      "last_analyze": null
+    },
+    {
+      "relname": "auth_access_tokens",
+      "n_live_tup": "30",
+      "n_dead_tup": "48",
+      "seq_scan": "560",
+      "idx_scan": "70",
+      "total_bytes": "65536",
+      "last_autoanalyze": "2026-10-28T15:00:48.405Z",
+      "last_analyze": null
+    },
+    {
+      "relname": "gateway_ethernet_configs",
+      "n_live_tup": "1",
+      "n_dead_tup": "6",
+      "seq_scan": "4",
+      "idx_scan": "84",
+      "total_bytes": "49152",
+      "last_autoanalyze": null,
+      "last_analyze": null
+    },
+    {
+      "relname": "gateway_network_operations",
+      "n_live_tup": "19",
+      "n_dead_tup": "42",
+      "seq_scan": "110654",
+      "idx_scan": "26478",
+      "total_bytes": "131072",
+      "last_autoanalyze": "2026-10-26T14:38:53.999Z",
+      "last_analyze": null
+    },
+    {
+      "relname": "gateway_security_alerts",
+      "n_live_tup": "0",
+      "n_dead_tup": "0",
+      "seq_scan": "6",
+      "idx_scan": "42",
+      "total_bytes": "32768",
+      "last_autoanalyze": null,
+      "last_analyze": null
+    },
+    {
+      "relname": "gateway_ssh_host_key_rotations",
+      "n_live_tup": "0",
+      "n_dead_tup": "0",
+      "seq_scan": "4",
+      "idx_scan": "1",
+      "total_bytes": "24576",
+      "last_autoanalyze": null,
+      "last_analyze": null
+    },
+    {
+      "relname": "gateways",
+      "n_live_tup": "1",
+      "n_dead_tup": "13",
+      "seq_scan": "2790",
+      "idx_scan": "62",
+      "total_bytes": "81920",
+      "last_autoanalyze": "2026-10-28T16:19:49.508Z",
+      "last_analyze": null
+    },
+    {
+      "relname": "rate_limits",
+      "n_live_tup": "1",
+      "n_dead_tup": "3",
+      "seq_scan": "15",
+      "idx_scan": "8",
+      "total_bytes": "24576",
+      "last_autoanalyze": null,
+      "last_analyze": null
+    },
+    {
+      "relname": "users",
+      "n_live_tup": "1",
+      "n_dead_tup": "2",
+      "seq_scan": "6",
+      "idx_scan": "410",
+      "total_bytes": "49152",
+      "last_autoanalyze": null,
+      "last_analyze": null
+    },
+    {
+      "relname": "worker_heartbeats",
+      "n_live_tup": "1",
+      "n_dead_tup": "4",
+      "seq_scan": "5",
+      "idx_scan": "5337",
+      "total_bytes": "57344",
+      "last_autoanalyze": "2026-10-28T16:25:51.283Z",
+      "last_analyze": null
+    }
+  ],
+  "indexes": [
+    {
+      "tablename": "adonis_schema",
+      "indexname": "adonis_schema_pkey",
+      "indexdef": "CREATE UNIQUE INDEX adonis_schema_pkey ON public.adonis_schema USING btree (id)"
+    },
+    {
+      "tablename": "adonis_schema_versions",
+      "indexname": "adonis_schema_versions_pkey",
+      "indexdef": "CREATE UNIQUE INDEX adonis_schema_versions_pkey ON public.adonis_schema_versions USING btree (version)"
+    },
+    {
+      "tablename": "auth_access_tokens",
+      "indexname": "auth_access_tokens_pkey",
+      "indexdef": "CREATE UNIQUE INDEX auth_access_tokens_pkey ON public.auth_access_tokens USING btree (id)"
+    },
+    {
+      "tablename": "gateway_ethernet_configs",
+      "indexname": "gateway_confs_pkey",
+      "indexdef": "CREATE UNIQUE INDEX gateway_confs_pkey ON public.gateway_ethernet_configs USING btree (id)"
+    },
+    {
+      "tablename": "gateway_ethernet_configs",
+      "indexname": "gateway_ethernet_configs_gateway_id_unique",
+      "indexdef": "CREATE UNIQUE INDEX gateway_ethernet_configs_gateway_id_unique ON public.gateway_ethernet_configs USING btree (gateway_id)"
+    },
+    {
+      "tablename": "gateway_network_operations",
+      "indexname": "gateway_network_operations_available_at_index",
+      "indexdef": "CREATE INDEX gateway_network_operations_available_at_index ON public.gateway_network_operations USING btree (available_at)"
+    },
+    {
+      "tablename": "gateway_network_operations",
+      "indexname": "gateway_network_operations_gateway_id_created_at_index",
+      "indexdef": "CREATE INDEX gateway_network_operations_gateway_id_created_at_index ON public.gateway_network_operations USING btree (gateway_id, created_at)"
+    },
+    {
+      "tablename": "gateway_network_operations",
+      "indexname": "gateway_network_operations_one_active_per_gateway",
+      "indexdef": "CREATE UNIQUE INDEX gateway_network_operations_one_active_per_gateway ON public.gateway_network_operations USING btree (gateway_id) WHERE ((status)::text = ANY ((ARRAY['pending'::character varying, 'applying'::character varying])::text[]))"
+    },
+    {
+      "tablename": "gateway_network_operations",
+      "indexname": "gateway_network_operations_pending_available_index",
+      "indexdef": "CREATE INDEX gateway_network_operations_pending_available_index ON public.gateway_network_operations USING btree (available_at, id) WHERE ((status)::text = 'pending'::text)"
+    },
+    {
+      "tablename": "gateway_network_operations",
+      "indexname": "gateway_network_operations_pkey",
+      "indexdef": "CREATE UNIQUE INDEX gateway_network_operations_pkey ON public.gateway_network_operations USING btree (id)"
+    },
+    {
+      "tablename": "gateway_security_alerts",
+      "indexname": "gateway_security_alerts_gateway_id_status_created_at_index",
+      "indexdef": "CREATE INDEX gateway_security_alerts_gateway_id_status_created_at_index ON public.gateway_security_alerts USING btree (gateway_id, status, created_at)"
+    },
+    {
+      "tablename": "gateway_security_alerts",
+      "indexname": "gateway_security_alerts_operation_id_unique",
+      "indexdef": "CREATE UNIQUE INDEX gateway_security_alerts_operation_id_unique ON public.gateway_security_alerts USING btree (operation_id)"
+    },
+    {
+      "tablename": "gateway_security_alerts",
+      "indexname": "gateway_security_alerts_pkey",
+      "indexdef": "CREATE UNIQUE INDEX gateway_security_alerts_pkey ON public.gateway_security_alerts USING btree (id)"
+    },
+    {
+      "tablename": "gateway_ssh_host_key_rotations",
+      "indexname": "gateway_ssh_host_key_rotations_gateway_id_created_at_index",
+      "indexdef": "CREATE INDEX gateway_ssh_host_key_rotations_gateway_id_created_at_index ON public.gateway_ssh_host_key_rotations USING btree (gateway_id, created_at)"
+    },
+    {
+      "tablename": "gateway_ssh_host_key_rotations",
+      "indexname": "gateway_ssh_host_key_rotations_pkey",
+      "indexdef": "CREATE UNIQUE INDEX gateway_ssh_host_key_rotations_pkey ON public.gateway_ssh_host_key_rotations USING btree (id)"
+    },
+    {
+      "tablename": "gateways",
+      "indexname": "gateways_gateway_eui_unique",
+      "indexdef": "CREATE UNIQUE INDEX gateways_gateway_eui_unique ON public.gateways USING btree (gateway_eui)"
+    },
+    {
+      "tablename": "gateways",
+      "indexname": "gateways_pkey",
+      "indexdef": "CREATE UNIQUE INDEX gateways_pkey ON public.gateways USING btree (id)"
+    },
+    {
+      "tablename": "rate_limits",
+      "indexname": "rate_limits_pkey",
+      "indexdef": "CREATE UNIQUE INDEX rate_limits_pkey ON public.rate_limits USING btree (key)"
+    },
+    {
+      "tablename": "users",
+      "indexname": "users_email_unique",
+      "indexdef": "CREATE UNIQUE INDEX users_email_unique ON public.users USING btree (email)"
+    },
+    {
+      "tablename": "users",
+      "indexname": "users_pkey",
+      "indexdef": "CREATE UNIQUE INDEX users_pkey ON public.users USING btree (id)"
+    },
+    {
+      "tablename": "worker_heartbeats",
+      "indexname": "worker_heartbeats_pkey",
+      "indexdef": "CREATE UNIQUE INDEX worker_heartbeats_pkey ON public.worker_heartbeats USING btree (name)"
+    }
+  ],
+  "counts": {
+    "gateways": 1,
+    "operations": 19,
+    "alerts": 0
+  },
+  "queue": [
+    {
+      "status": "applied",
+      "total": 14
+    },
+    {
+      "status": "failed",
+      "total": 5
+    }
+  ],
+  "extensions": [],
+  "queryPlans": [
+    {
+      "name": "gateway_list_current",
+      "plan": {
+        "Plan": {
+          "Node Type": "Seq Scan",
+          "Parallel Aware": false,
+          "Async Capable": false,
+          "Relation Name": "gateways",
+          "Alias": "gateways",
+          "Startup Cost": 0,
+          "Total Cost": 1.01,
+          "Plan Rows": 1,
+          "Plan Width": 1299,
+          "Actual Startup Time": 0.003,
+          "Actual Total Time": 0.004,
+          "Actual Rows": 1,
+          "Actual Loops": 1,
+          "Shared Hit Blocks": 1,
+          "Shared Read Blocks": 0,
+          "Shared Dirtied Blocks": 0,
+          "Shared Written Blocks": 0,
+          "Local Hit Blocks": 0,
+          "Local Read Blocks": 0,
+          "Local Dirtied Blocks": 0,
+          "Local Written Blocks": 0,
+          "Temp Read Blocks": 0,
+          "Temp Written Blocks": 0
+        },
+        "Planning": {
+          "Shared Hit Blocks": 45,
+          "Shared Read Blocks": 0,
+          "Shared Dirtied Blocks": 0,
+          "Shared Written Blocks": 0,
+          "Local Hit Blocks": 0,
+          "Local Read Blocks": 0,
+          "Local Dirtied Blocks": 0,
+          "Local Written Blocks": 0,
+          "Temp Read Blocks": 0,
+          "Temp Written Blocks": 0
+        },
+        "Planning Time": 0.169,
+        "Triggers": [],
+        "Execution Time": 0.009
+      }
+    },
+    {
+      "name": "operations_history",
+      "plan": {
+        "Plan": {
+          "Node Type": "Limit",
+          "Parallel Aware": false,
+          "Async Capable": false,
+          "Startup Cost": 2.77,
+          "Total Cost": 2.82,
+          "Plan Rows": 20,
+          "Plan Width": 899,
+          "Actual Startup Time": 0.03,
+          "Actual Total Time": 0.032,
+          "Actual Rows": 19,
+          "Actual Loops": 1,
+          "Shared Hit Blocks": 5,
+          "Shared Read Blocks": 0,
+          "Shared Dirtied Blocks": 0,
+          "Shared Written Blocks": 0,
+          "Local Hit Blocks": 0,
+          "Local Read Blocks": 0,
+          "Local Dirtied Blocks": 0,
+          "Local Written Blocks": 0,
+          "Temp Read Blocks": 0,
+          "Temp Written Blocks": 0,
+          "Plans": [
+            {
+              "Node Type": "Sort",
+              "Parent Relationship": "Outer",
+              "Parallel Aware": false,
+              "Async Capable": false,
+              "Startup Cost": 2.77,
+              "Total Cost": 2.82,
+              "Plan Rows": 22,
+              "Plan Width": 899,
+              "Actual Startup Time": 0.029,
+              "Actual Total Time": 0.03,
+              "Actual Rows": 19,
+              "Actual Loops": 1,
+              "Sort Key": [
+                "created_at DESC"
+              ],
+              "Sort Method": "quicksort",
+              "Sort Space Used": 36,
+              "Sort Space Type": "Memory",
+              "Shared Hit Blocks": 5,
+              "Shared Read Blocks": 0,
+              "Shared Dirtied Blocks": 0,
+              "Shared Written Blocks": 0,
+              "Local Hit Blocks": 0,
+              "Local Read Blocks": 0,
+              "Local Dirtied Blocks": 0,
+              "Local Written Blocks": 0,
+              "Temp Read Blocks": 0,
+              "Temp Written Blocks": 0,
+              "Plans": [
+                {
+                  "Node Type": "Seq Scan",
+                  "Parent Relationship": "Outer",
+                  "Parallel Aware": false,
+                  "Async Capable": false,
+                  "Relation Name": "gateway_network_operations",
+                  "Alias": "gateway_network_operations",
+                  "Startup Cost": 0,
+                  "Total Cost": 2.27,
+                  "Plan Rows": 22,
+                  "Plan Width": 899,
+                  "Actual Startup Time": 0.003,
+                  "Actual Total Time": 0.005,
+                  "Actual Rows": 19,
+                  "Actual Loops": 1,
+                  "Filter": "(gateway_id = 4)",
+                  "Rows Removed by Filter": 0,
+                  "Shared Hit Blocks": 2,
+                  "Shared Read Blocks": 0,
+                  "Shared Dirtied Blocks": 0,
+                  "Shared Written Blocks": 0,
+                  "Local Hit Blocks": 0,
+                  "Local Read Blocks": 0,
+                  "Local Dirtied Blocks": 0,
+                  "Local Written Blocks": 0,
+                  "Temp Read Blocks": 0,
+                  "Temp Written Blocks": 0
+                }
+              ]
+            }
+          ]
+        },
+        "Planning": {
+          "Shared Hit Blocks": 44,
+          "Shared Read Blocks": 0,
+          "Shared Dirtied Blocks": 0,
+          "Shared Written Blocks": 0,
+          "Local Hit Blocks": 0,
+          "Local Read Blocks": 0,
+          "Local Dirtied Blocks": 0,
+          "Local Written Blocks": 0,
+          "Temp Read Blocks": 0,
+          "Temp Written Blocks": 0
+        },
+        "Planning Time": 0.196,
+        "Triggers": [],
+        "Execution Time": 0.046
+      }
+    },
+    {
+      "name": "alerts_history",
+      "plan": {
+        "Plan": {
+          "Node Type": "Limit",
+          "Parallel Aware": false,
+          "Async Capable": false,
+          "Startup Cost": 8.17,
+          "Total Cost": 8.18,
+          "Plan Rows": 1,
+          "Plan Width": 864,
+          "Actual Startup Time": 0.015,
+          "Actual Total Time": 0.016,
+          "Actual Rows": 0,
+          "Actual Loops": 1,
+          "Shared Hit Blocks": 2,
+          "Shared Read Blocks": 0,
+          "Shared Dirtied Blocks": 0,
+          "Shared Written Blocks": 0,
+          "Local Hit Blocks": 0,
+          "Local Read Blocks": 0,
+          "Local Dirtied Blocks": 0,
+          "Local Written Blocks": 0,
+          "Temp Read Blocks": 0,
+          "Temp Written Blocks": 0,
+          "Plans": [
+            {
+              "Node Type": "Sort",
+              "Parent Relationship": "Outer",
+              "Parallel Aware": false,
+              "Async Capable": false,
+              "Startup Cost": 8.17,
+              "Total Cost": 8.18,
+              "Plan Rows": 1,
+              "Plan Width": 864,
+              "Actual Startup Time": 0.015,
+              "Actual Total Time": 0.015,
+              "Actual Rows": 0,
+              "Actual Loops": 1,
+              "Sort Key": [
+                "created_at DESC"
+              ],
+              "Sort Method": "quicksort",
+              "Sort Space Used": 25,
+              "Sort Space Type": "Memory",
+              "Shared Hit Blocks": 2,
+              "Shared Read Blocks": 0,
+              "Shared Dirtied Blocks": 0,
+              "Shared Written Blocks": 0,
+              "Local Hit Blocks": 0,
+              "Local Read Blocks": 0,
+              "Local Dirtied Blocks": 0,
+              "Local Written Blocks": 0,
+              "Temp Read Blocks": 0,
+              "Temp Written Blocks": 0,
+              "Plans": [
+                {
+                  "Node Type": "Index Scan",
+                  "Parent Relationship": "Outer",
+                  "Parallel Aware": false,
+                  "Async Capable": false,
+                  "Scan Direction": "Forward",
+                  "Index Name": "gateway_security_alerts_gateway_id_status_created_at_index",
+                  "Relation Name": "gateway_security_alerts",
+                  "Alias": "gateway_security_alerts",
+                  "Startup Cost": 0.14,
+                  "Total Cost": 8.16,
+                  "Plan Rows": 1,
+                  "Plan Width": 864,
+                  "Actual Startup Time": 0.006,
+                  "Actual Total Time": 0.006,
+                  "Actual Rows": 0,
+                  "Actual Loops": 1,
+                  "Index Cond": "(gateway_id = 4)",
+                  "Rows Removed by Index Recheck": 0,
+                  "Shared Hit Blocks": 2,
+                  "Shared Read Blocks": 0,
+                  "Shared Dirtied Blocks": 0,
+                  "Shared Written Blocks": 0,
+                  "Local Hit Blocks": 0,
+                  "Local Read Blocks": 0,
+                  "Local Dirtied Blocks": 0,
+                  "Local Written Blocks": 0,
+                  "Temp Read Blocks": 0,
+                  "Temp Written Blocks": 0
+                }
+              ]
+            }
+          ]
+        },
+        "Planning": {
+          "Shared Hit Blocks": 3,
+          "Shared Read Blocks": 0,
+          "Shared Dirtied Blocks": 0,
+          "Shared Written Blocks": 0,
+          "Local Hit Blocks": 0,
+          "Local Read Blocks": 0,
+          "Local Dirtied Blocks": 0,
+          "Local Written Blocks": 0,
+          "Temp Read Blocks": 0,
+          "Temp Written Blocks": 0
+        },
+        "Planning Time": 0.03,
+        "Triggers": [],
+        "Execution Time": 0.032
+      }
+    },
+    {
+      "name": "queue_pending_select_only",
+      "plan": {
+        "Plan": {
+          "Node Type": "Limit",
+          "Parallel Aware": false,
+          "Async Capable": false,
+          "Startup Cost": 2.39,
+          "Total Cost": 2.4,
+          "Plan Rows": 1,
+          "Plan Width": 899,
+          "Actual Startup Time": 0.032,
+          "Actual Total Time": 0.032,
+          "Actual Rows": 0,
+          "Actual Loops": 1,
+          "Shared Hit Blocks": 5,
+          "Shared Read Blocks": 0,
+          "Shared Dirtied Blocks": 0,
+          "Shared Written Blocks": 0,
+          "Local Hit Blocks": 0,
+          "Local Read Blocks": 0,
+          "Local Dirtied Blocks": 0,
+          "Local Written Blocks": 0,
+          "Temp Read Blocks": 0,
+          "Temp Written Blocks": 0,
+          "Plans": [
+            {
+              "Node Type": "Sort",
+              "Parent Relationship": "Outer",
+              "Parallel Aware": false,
+              "Async Capable": false,
+              "Startup Cost": 2.39,
+              "Total Cost": 2.4,
+              "Plan Rows": 1,
+              "Plan Width": 899,
+              "Actual Startup Time": 0.032,
+              "Actual Total Time": 0.032,
+              "Actual Rows": 0,
+              "Actual Loops": 1,
+              "Sort Key": [
+                "available_at",
+                "id"
+              ],
+              "Sort Method": "quicksort",
+              "Sort Space Used": 25,
+              "Sort Space Type": "Memory",
+              "Shared Hit Blocks": 5,
+              "Shared Read Blocks": 0,
+              "Shared Dirtied Blocks": 0,
+              "Shared Written Blocks": 0,
+              "Local Hit Blocks": 0,
+              "Local Read Blocks": 0,
+              "Local Dirtied Blocks": 0,
+              "Local Written Blocks": 0,
+              "Temp Read Blocks": 0,
+              "Temp Written Blocks": 0,
+              "Plans": [
+                {
+                  "Node Type": "Seq Scan",
+                  "Parent Relationship": "Outer",
+                  "Parallel Aware": false,
+                  "Async Capable": false,
+                  "Relation Name": "gateway_network_operations",
+                  "Alias": "gateway_network_operations",
+                  "Startup Cost": 0,
+                  "Total Cost": 2.38,
+                  "Plan Rows": 1,
+                  "Plan Width": 899,
+                  "Actual Startup Time": 0.007,
+                  "Actual Total Time": 0.007,
+                  "Actual Rows": 0,
+                  "Actual Loops": 1,
+                  "Filter": "(((status)::text = 'pending'::text) AND (available_at <= now()))",
+                  "Rows Removed by Filter": 19,
+                  "Shared Hit Blocks": 2,
+                  "Shared Read Blocks": 0,
+                  "Shared Dirtied Blocks": 0,
+                  "Shared Written Blocks": 0,
+                  "Local Hit Blocks": 0,
+                  "Local Read Blocks": 0,
+                  "Local Dirtied Blocks": 0,
+                  "Local Written Blocks": 0,
+                  "Temp Read Blocks": 0,
+                  "Temp Written Blocks": 0
+                }
+              ]
+            }
+          ]
+        },
+        "Planning": {
+          "Shared Hit Blocks": 9,
+          "Shared Read Blocks": 1,
+          "Shared Dirtied Blocks": 0,
+          "Shared Written Blocks": 0,
+          "Local Hit Blocks": 0,
+          "Local Read Blocks": 0,
+          "Local Dirtied Blocks": 0,
+          "Local Written Blocks": 0,
+          "Temp Read Blocks": 0,
+          "Temp Written Blocks": 0
+        },
+        "Planning Time": 0.73,
+        "Triggers": [],
+        "Execution Time": 0.043
+      }
+    },
+    {
+      "name": "lease_recovery_select_only",
+      "plan": {
+        "Plan": {
+          "Node Type": "Seq Scan",
+          "Parallel Aware": false,
+          "Async Capable": false,
+          "Relation Name": "gateway_network_operations",
+          "Alias": "gateway_network_operations",
+          "Startup Cost": 0,
+          "Total Cost": 2.44,
+          "Plan Rows": 1,
+          "Plan Width": 4,
+          "Actual Startup Time": 0.006,
+          "Actual Total Time": 0.006,
+          "Actual Rows": 0,
+          "Actual Loops": 1,
+          "Filter": "((attempts < 5) AND ((status)::text = 'applying'::text) AND (processing_expires_at <= now()))",
+          "Rows Removed by Filter": 19,
+          "Shared Hit Blocks": 2,
+          "Shared Read Blocks": 0,
+          "Shared Dirtied Blocks": 0,
+          "Shared Written Blocks": 0,
+          "Local Hit Blocks": 0,
+          "Local Read Blocks": 0,
+          "Local Dirtied Blocks": 0,
+          "Local Written Blocks": 0,
+          "Temp Read Blocks": 0,
+          "Temp Written Blocks": 0
+        },
+        "Planning": {
+          "Shared Hit Blocks": 0,
+          "Shared Read Blocks": 0,
+          "Shared Dirtied Blocks": 0,
+          "Shared Written Blocks": 0,
+          "Local Hit Blocks": 0,
+          "Local Read Blocks": 0,
+          "Local Dirtied Blocks": 0,
+          "Local Written Blocks": 0,
+          "Temp Read Blocks": 0,
+          "Temp Written Blocks": 0
+        },
+        "Planning Time": 0.037,
+        "Triggers": [],
+        "Execution Time": 0.01
+      }
+    },
+    {
+      "name": "queue_health_pending_count",
+      "plan": {
+        "Plan": {
+          "Node Type": "Aggregate",
+          "Strategy": "Plain",
+          "Partial Mode": "Simple",
+          "Parallel Aware": false,
+          "Async Capable": false,
+          "Startup Cost": 2.28,
+          "Total Cost": 2.29,
+          "Plan Rows": 1,
+          "Plan Width": 8,
+          "Actual Startup Time": 0.007,
+          "Actual Total Time": 0.007,
+          "Actual Rows": 1,
+          "Actual Loops": 1,
+          "Shared Hit Blocks": 2,
+          "Shared Read Blocks": 0,
+          "Shared Dirtied Blocks": 0,
+          "Shared Written Blocks": 0,
+          "Local Hit Blocks": 0,
+          "Local Read Blocks": 0,
+          "Local Dirtied Blocks": 0,
+          "Local Written Blocks": 0,
+          "Temp Read Blocks": 0,
+          "Temp Written Blocks": 0,
+          "Plans": [
+            {
+              "Node Type": "Seq Scan",
+              "Parent Relationship": "Outer",
+              "Parallel Aware": false,
+              "Async Capable": false,
+              "Relation Name": "gateway_network_operations",
+              "Alias": "gateway_network_operations",
+              "Startup Cost": 0,
+              "Total Cost": 2.27,
+              "Plan Rows": 1,
+              "Plan Width": 0,
+              "Actual Startup Time": 0.005,
+              "Actual Total Time": 0.006,
+              "Actual Rows": 0,
+              "Actual Loops": 1,
+              "Filter": "((status)::text = 'pending'::text)",
+              "Rows Removed by Filter": 19,
+              "Shared Hit Blocks": 2,
+              "Shared Read Blocks": 0,
+              "Shared Dirtied Blocks": 0,
+              "Shared Written Blocks": 0,
+              "Local Hit Blocks": 0,
+              "Local Read Blocks": 0,
+              "Local Dirtied Blocks": 0,
+              "Local Written Blocks": 0,
+              "Temp Read Blocks": 0,
+              "Temp Written Blocks": 0
+            }
+          ]
+        },
+        "Planning": {
+          "Shared Hit Blocks": 0,
+          "Shared Read Blocks": 0,
+          "Shared Dirtied Blocks": 0,
+          "Shared Written Blocks": 0,
+          "Local Hit Blocks": 0,
+          "Local Read Blocks": 0,
+          "Local Dirtied Blocks": 0,
+          "Local Written Blocks": 0,
+          "Temp Read Blocks": 0,
+          "Temp Written Blocks": 0
+        },
+        "Planning Time": 0.037,
+        "Triggers": [],
+        "Execution Time": 0.015
+      }
+    }
+  ],
+  "http": [
+    {
+      "path": "/health",
+      "samples": 20,
+      "statuses": [
+        200
+      ],
+      "p50Ms": 5.244,
+      "p95Ms": 13.933,
+      "maxMs": 39.171,
+      "durationsMs": [
+        39.171,
+        13.933,
+        6.585,
+        8.467,
+        6.837,
+        9.527,
+        5.749,
+        5.364,
+        6.164,
+        5.78,
+        4.459,
+        4.335,
+        4.692,
+        4.42,
+        4.22,
+        5.244,
+        4.907,
+        4.538,
+        4.065,
+        4.387
+      ]
+    },
+    {
+      "path": "/api/v1/gateways",
+      "samples": 1,
+      "statuses": [
+        401
+      ],
+      "p50Ms": 4.021,
+      "p95Ms": 4.021,
+      "maxMs": 4.021,
+      "durationsMs": [
+        4.021
+      ]
+    },
+    {
+      "path": "/api/v1/health/queue",
+      "samples": 1,
+      "statuses": [
+        401
+      ],
+      "p50Ms": 4.092,
+      "p95Ms": 4.092,
+      "maxMs": 4.092,
+      "durationsMs": [
+        4.092
+      ]
+    }
+  ],
+  "stack": {
+    "@adonisjs/core": "^7.5.2",
+    "@adonisjs/lucid": "^22.4.2",
+    "@adonisjs/auth": "^10.1.0",
+    "@adonisjs/limiter": "^3.0.1",
+    "pg": "^8.23.1"
+  }
+}

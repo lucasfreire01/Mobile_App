@@ -1,0 +1,22 @@
+{
+  "verifiedAt": "2026-10-29T14:44:53.549Z",
+  "checks": {
+    "tests": 85,
+    "lint": "passed",
+    "typecheck": "passed",
+    "build": "passed"
+  },
+  "temporaryDatabaseRemoved": true,
+  "temporaryRoleRemoved": true,
+  "ssh": "simulated in regression; no direct physical gateway validation",
+  "defaults": {
+    "concurrencyPerProcess": 5,
+    "batchSize": 50,
+    "probeTimeoutMs": 15000,
+    "cycleDispatchBudgetMs": 100000
+  },
+  "limitations": [
+    "not a distributed lock across replicas",
+    "database waits are outside the SSH dispatch budget"
+  ]
+}

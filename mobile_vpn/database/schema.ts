@@ -33,45 +33,192 @@ export class AuthAccessTokenSchema extends BaseModel {
 }
 
 export class GatewayEthernetConfigSchema extends BaseModel {
-  static $columns = ['createdAt', 'gatewayId', 'id', 'mode', 'updatedAt'] as const
+  static $columns = ['createdAt', 'dhcpFallbackEnabled', 'gatewayId', 'id', 'mode', 'primaryDns', 'secondaryDns', 'staticGateway', 'staticIpAddress', 'staticPrefixLength', 'updatedAt'] as const
   $columns = GatewayEthernetConfigSchema.$columns
   @column.dateTime({ autoCreate: true })
   declare createdAt: DateTime | null
+  @column()
+  declare dhcpFallbackEnabled: boolean
   @column()
   declare gatewayId: number
   @column({ isPrimary: true })
   declare id: number
   @column()
   declare mode: string
+  @column()
+  declare primaryDns: string | null
+  @column()
+  declare secondaryDns: string | null
+  @column()
+  declare staticGateway: string | null
+  @column()
+  declare staticIpAddress: string | null
+  @column()
+  declare staticPrefixLength: number | null
   @column.dateTime({ autoCreate: true, autoUpdate: true })
   declare updatedAt: DateTime | null
 }
 
+export class GatewayIpReservationSchema extends BaseModel {
+  static $columns = ['createdAt', 'id', 'managementIpAddress', 'networkId', 'status', 'token', 'updatedAt'] as const
+  $columns = GatewayIpReservationSchema.$columns
+  @column.dateTime({ autoCreate: true })
+  declare createdAt: DateTime
+  @column({ isPrimary: true })
+  declare id: number
+  @column()
+  declare managementIpAddress: string
+  @column()
+  declare networkId: string | null
+  @column()
+  declare status: string
+  @column()
+  declare token: string
+  @column.dateTime({ autoCreate: true, autoUpdate: true })
+  declare updatedAt: DateTime
+}
+
+export class GatewayNetworkOperationSchema extends BaseModel {
+  static $columns = ['action', 'attempts', 'availableAt', 'createdAt', 'errorCode', 'errorMessage', 'finishedAt', 'gatewayId', 'id', 'payload', 'previousPayload', 'processingExpiresAt', 'processingToken', 'requestedByEmail', 'requestedByUserId', 'startedAt', 'status', 'updatedAt'] as const
+  $columns = GatewayNetworkOperationSchema.$columns
+  @column()
+  declare action: string
+  @column()
+  declare attempts: number
+  @column.dateTime()
+  declare availableAt: DateTime | null
+  @column.dateTime({ autoCreate: true })
+  declare createdAt: DateTime
+  @column()
+  declare errorCode: string | null
+  @column()
+  declare errorMessage: string | null
+  @column.dateTime()
+  declare finishedAt: DateTime | null
+  @column()
+  declare gatewayId: number
+  @column({ isPrimary: true })
+  declare id: number
+  @column()
+  declare payload: any | null
+  @column()
+  declare previousPayload: any | null
+  @column.dateTime()
+  declare processingExpiresAt: DateTime | null
+  @column()
+  declare processingToken: string | null
+  @column()
+  declare requestedByEmail: string | null
+  @column()
+  declare requestedByUserId: number | null
+  @column.dateTime()
+  declare startedAt: DateTime | null
+  @column()
+  declare status: string
+  @column.dateTime({ autoCreate: true, autoUpdate: true })
+  declare updatedAt: DateTime
+}
+
+export class GatewaySecurityAlertSchema extends BaseModel {
+  static $columns = ['acknowledgedAt', 'acknowledgedByEmail', 'acknowledgedByUserId', 'createdAt', 'gatewayId', 'id', 'message', 'operationId', 'status', 'type', 'updatedAt'] as const
+  $columns = GatewaySecurityAlertSchema.$columns
+  @column.dateTime()
+  declare acknowledgedAt: DateTime | null
+  @column()
+  declare acknowledgedByEmail: string | null
+  @column()
+  declare acknowledgedByUserId: number | null
+  @column.dateTime({ autoCreate: true })
+  declare createdAt: DateTime
+  @column()
+  declare gatewayId: number
+  @column({ isPrimary: true })
+  declare id: number
+  @column()
+  declare message: string
+  @column()
+  declare operationId: number
+  @column()
+  declare status: string
+  @column()
+  declare type: string
+  @column.dateTime({ autoCreate: true, autoUpdate: true })
+  declare updatedAt: DateTime
+}
+
+export class GatewaySshHostKeyRotationSchema extends BaseModel {
+  static $columns = ['createdAt', 'gatewayId', 'id', 'nextFingerprint', 'previousFingerprint', 'reason', 'requestedByEmail', 'requestedByUserId'] as const
+  $columns = GatewaySshHostKeyRotationSchema.$columns
+  @column.dateTime({ autoCreate: true })
+  declare createdAt: DateTime
+  @column()
+  declare gatewayId: number
+  @column({ isPrimary: true })
+  declare id: number
+  @column()
+  declare nextFingerprint: string
+  @column()
+  declare previousFingerprint: string | null
+  @column()
+  declare reason: string
+  @column()
+  declare requestedByEmail: string
+  @column()
+  declare requestedByUserId: number | null
+}
+
 export class GatewaySchema extends BaseModel {
-  static $columns = ['createdAt', 'gatewayEui', 'id', 'ipAddress', 'lastSeenAt', 'location', 'name', 'status', 'updatedAt'] as const
+  static $columns = ['ccConnectorId', 'ccIpServiceId', 'ccNetworkId', 'createdAt', 'gatewayEui', 'id', 'lastSeenAt', 'location', 'managementIpAddress', 'name', 'networkLockExpiresAt', 'networkLockToken', 'sshHostKeyFingerprint', 'status', 'updatedAt', 'wanIpAddress', 'wanIpObservedAt'] as const
   $columns = GatewaySchema.$columns
+  @column()
+  declare ccConnectorId: string | null
+  @column()
+  declare ccIpServiceId: string | null
+  @column()
+  declare ccNetworkId: string | null
   @column.dateTime({ autoCreate: true })
   declare createdAt: DateTime | null
   @column()
   declare gatewayEui: string | null
   @column({ isPrimary: true })
   declare id: number
-  @column()
-  declare ipAddress: string | null
   @column.dateTime()
   declare lastSeenAt: DateTime | null
   @column()
   declare location: string | null
   @column()
+  declare managementIpAddress: string | null
+  @column()
   declare name: string | null
+  @column.dateTime()
+  declare networkLockExpiresAt: DateTime | null
+  @column()
+  declare networkLockToken: string | null
+  @column()
+  declare sshHostKeyFingerprint: string | null
   @column()
   declare status: string
   @column.dateTime({ autoCreate: true, autoUpdate: true })
   declare updatedAt: DateTime | null
+  @column()
+  declare wanIpAddress: string | null
+  @column.dateTime()
+  declare wanIpObservedAt: DateTime | null
+}
+
+export class RateLimitSchema extends BaseModel {
+  static $columns = ['expire', 'key', 'points'] as const
+  $columns = RateLimitSchema.$columns
+  @column()
+  declare expire: bigint | number | null
+  @column({ isPrimary: true })
+  declare key: string
+  @column()
+  declare points: number
 }
 
 export class UserSchema extends BaseModel {
-  static $columns = ['createdAt', 'email', 'fullName', 'id', 'password', 'updatedAt'] as const
+  static $columns = ['createdAt', 'email', 'fullName', 'id', 'isAdmin', 'password', 'updatedAt'] as const
   $columns = UserSchema.$columns
   @column.dateTime({ autoCreate: true })
   declare createdAt: DateTime
@@ -81,8 +228,23 @@ export class UserSchema extends BaseModel {
   declare fullName: string | null
   @column({ isPrimary: true })
   declare id: number
+  @column()
+  declare isAdmin: boolean
   @column({ serializeAs: null })
   declare password: string
   @column.dateTime({ autoCreate: true, autoUpdate: true })
   declare updatedAt: DateTime | null
+}
+
+export class WorkerHeartbeatSchema extends BaseModel {
+  static $columns = ['createdAt', 'lastSeenAt', 'name', 'updatedAt'] as const
+  $columns = WorkerHeartbeatSchema.$columns
+  @column.dateTime({ autoCreate: true })
+  declare createdAt: DateTime
+  @column.dateTime()
+  declare lastSeenAt: DateTime
+  @column({ isPrimary: true })
+  declare name: string
+  @column.dateTime({ autoCreate: true, autoUpdate: true })
+  declare updatedAt: DateTime
 }

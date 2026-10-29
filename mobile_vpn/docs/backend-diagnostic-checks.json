@@ -1,0 +1,62 @@
+{
+  "collectedAt": "2026-10-29T13:15:58.638Z",
+  "typecheck": "passed",
+  "lint": {
+    "errors": 25,
+    "warnings": 0,
+    "files": [
+      {
+        "file": "app/controllers/gateway_ssh_host_keys_controller.ts",
+        "errors": 2,
+        "warnings": 0
+      },
+      {
+        "file": "app/controllers/queue_healths_controller.ts",
+        "errors": 9,
+        "warnings": 0
+      },
+      {
+        "file": "app/models/worker_heartbeat.ts",
+        "errors": 1,
+        "warnings": 0
+      },
+      {
+        "file": "app/services/cloud_connexa_service.ts",
+        "errors": 3,
+        "warnings": 0
+      },
+      {
+        "file": "app/services/gateway_network_command_builder.ts",
+        "errors": 2,
+        "warnings": 0
+      },
+      {
+        "file": "app/services/gateway_security_alert_service.ts",
+        "errors": 1,
+        "warnings": 0
+      },
+      {
+        "file": "app/services/gateway_service.ts",
+        "errors": 3,
+        "warnings": 0
+      },
+      {
+        "file": "tests/unit/gateway_dhcp_fallback_command.spec.ts",
+        "errors": 1,
+        "warnings": 0
+      },
+      {
+        "file": "tests/unit/gateway_network_config_job.spec.ts",
+        "errors": 2,
+        "warnings": 0
+      },
+      {
+        "file": "tests/unit/gateway_network_operation_queue_service.spec.ts",
+        "errors": 1,
+        "warnings": 0
+      }
+    ]
+  },
+  "functionalTests": "not run; test bootstrap migrates and rolls back test database",
+  "applicationBehavior": "unchanged"
+}

@@ -1,0 +1,63 @@
+{
+  "collectedAt": "2026-10-29T13:15:58.636Z",
+  "scope": "npm audit --omit=dev",
+  "summary": {
+    "info": 0,
+    "low": 2,
+    "moderate": 1,
+    "high": 0,
+    "critical": 0,
+    "total": 3
+  },
+  "findings": [
+    {
+      "name": "@adonisjs/lucid",
+      "severity": "low",
+      "isDirect": true,
+      "range": ">=22.0.0-next.0",
+      "advisories": [
+        "deepmerge"
+      ],
+      "fixAvailable": {
+        "name": "@adonisjs/lucid",
+        "version": "21.8.2",
+        "isSemVerMajor": true
+      }
+    },
+    {
+      "name": "deepmerge",
+      "severity": "low",
+      "isDirect": false,
+      "range": ">=4.2.0",
+      "advisories": [
+        {
+          "title": "deepmerge mergeObject() allows prototype poisoning of returned objects",
+          "url": "https://github.com/advisories/GHSA-gcqx-w48m-w2h4",
+          "severity": "low",
+          "range": ">=4.2.0 <=4.3.1"
+        }
+      ],
+      "fixAvailable": {
+        "name": "@adonisjs/lucid",
+        "version": "21.8.2",
+        "isSemVerMajor": true
+      }
+    },
+    {
+      "name": "qs",
+      "severity": "moderate",
+      "isDirect": false,
+      "range": "6.7.0 - 6.16.0",
+      "advisories": [
+        {
+          "title": "qs : qs.stringify with arrayFormat 'comma' throws an uncaught TypeError on array elements carrying a non-callable own toString (DoS)",
+          "url": "https://github.com/advisories/GHSA-6pq8-jhm2-2vcw",
+          "severity": "moderate",
+          "range": ">=6.7.0 <=6.16.0"
+        }
+      ],
+      "fixAvailable": true
+    }
+  ],
+  "exploitability": "not established by dependency audit"
+}
