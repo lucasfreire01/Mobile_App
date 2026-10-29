@@ -53,3 +53,6 @@ Desktop.ini
 
 # TypeScript
 *.tsbuildinfo
+
+# Local external skill repository, not part of SagaNexus
+/Anthropic-Cybersecurity-Skills/

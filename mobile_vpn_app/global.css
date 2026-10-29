@@ -1,0 +1,13 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Browser preview uses the same operational palette as the native surfaces. */
+@media (hover: hover) {
+  [role="button"]:focus-visible, input:focus-visible {
+    outline: 2px solid #138466;
+    outline-offset: 3px;
+  }
+}
+::selection { background: #c5e4d8; color: #102f46; }
+input { caret-color: #164f66; }
