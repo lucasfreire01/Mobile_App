@@ -24,6 +24,7 @@ administrador de um volume já existente.
 | gateway_security_alerts | SELECT, INSERT, UPDATE |
 | gateway_ssh_host_key_rotations | SELECT, INSERT |
 | worker_heartbeats | SELECT, INSERT, UPDATE |
+| gateway_monitor_states | SELECT, INSERT, UPDATE |
 | rate_limits | SELECT, INSERT, UPDATE, DELETE |
 
 Somente as sequências das tabelas com INSERT recebem USAGE. Não há concessão

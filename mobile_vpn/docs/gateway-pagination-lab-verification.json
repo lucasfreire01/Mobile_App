@@ -1,0 +1,28 @@
+{
+  "verifiedAt": "2026-10-30T12:19:36.156Z",
+  "backendPid": 59920,
+  "health": {
+    "status": "ok",
+    "database": "ok"
+  },
+  "meta": {
+    "total": 1,
+    "perPage": 20,
+    "currentPage": 1,
+    "lastPage": 1,
+    "firstPage": 1,
+    "firstPageUrl": "/api/v1/gateways?limit=20&page=1",
+    "lastPageUrl": "/api/v1/gateways?limit=20&page=1",
+    "nextPageUrl": null,
+    "previousPageUrl": null
+  },
+  "summary": {
+    "total": 1,
+    "online": 1,
+    "offline": 0
+  },
+  "gatewayIds": [
+    4
+  ],
+  "result": "passed"
+}

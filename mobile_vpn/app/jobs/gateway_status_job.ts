@@ -1,7 +1,9 @@
 import Gateway from '#models/gateway'
 import GatewaySshService from '#services/gateway_ssh_service'
 import env from '#start/env'
-import db from '@adonisjs/lucid/services/db'
+import GatewayMonitorLeaseService, {
+  type MonitorLease,
+} from '#services/gateway_monitor_lease_service'
 
 type MonitorOptions = {
   concurrency?: number
@@ -20,7 +22,7 @@ function bounded(value: number, maximum: number) {
 export default class GatewayStatusJob {
   readonly name = 'GatewayStatusJob'
   private running = false
-  private cursor = 0
+  private readonly leases = new GatewayMonitorLeaseService()
   private readonly concurrency: number
   private readonly batchSize: number
   private readonly probeTimeoutMs: number
@@ -43,21 +45,38 @@ export default class GatewayStatusJob {
   }
 
   async run() {
-    const stats = { skipped: false, checked: 0, offline: 0, writeErrors: 0, budgetExhausted: false }
+    const stats = {
+      skipped: false,
+      checked: 0,
+      offline: 0,
+      writeErrors: 0,
+      budgetExhausted: false,
+      leaseLost: false,
+    }
     if (this.running) return { ...stats, skipped: true }
     this.running = true
     const cycle = new AbortController()
-    const cycleTimer = setTimeout(() => cycle.abort(), this.cycleTimeoutMs)
+    let cycleTimer: ReturnType<typeof setTimeout> | undefined
+    let lease: MonitorLease | null = null
     try {
+      lease = await this.leases.acquire(this.cycleTimeoutMs + 30_000)
+      if (!lease) return { ...stats, skipped: true }
+      let cursor = lease.cursor
+      const ownedLease = lease
+      cycleTimer = setTimeout(() => cycle.abort(), this.cycleTimeoutMs)
+      const lostLease = () => {
+        stats.leaseLost = true
+        cycle.abort()
+      }
       while (!cycle.signal.aborted) {
         const gateways = await Gateway.query()
           .select('id', 'management_ip_address', 'ssh_host_key_fingerprint')
           .whereNotNull('management_ip_address')
-          .where('id', '>', this.cursor)
+          .where('id', '>', cursor)
           .orderBy('id', 'asc')
           .limit(this.batchSize)
         if (!gateways.length) {
-          this.cursor = 0
+          if (!(await this.leases.resetCursor(ownedLease))) lostLease()
           break
         }
         let next = 0
@@ -65,7 +84,12 @@ export default class GatewayStatusJob {
           while (!cycle.signal.aborted) {
             const gateway = gateways[next++]
             if (!gateway) return
-            this.cursor = gateway.id
+            if (!(await this.leases.advanceCursor(ownedLease, gateway.id))) {
+              lostLease()
+              return
+            }
+            cursor = Math.max(cursor, gateway.id)
+            if (cycle.signal.aborted) return
             const controller = new AbortController()
             const cancel = () => controller.abort()
             cycle.signal.addEventListener('abort', cancel, { once: true })
@@ -91,25 +115,31 @@ export default class GatewayStatusJob {
             if (update.status === 'offline') stats.offline++
             try {
               // Do not publish observations from an address changed during SSH.
-              await db
-                .from('gateways')
-                .where('id', gateway.id)
-                .where('management_ip_address', gateway.managementIpAddress!)
-                .update(update)
+              if (!(await this.leases.publish(ownedLease, gateway, update))) lostLease()
             } catch {
               stats.writeErrors++
             }
           }
         }
-        await Promise.all(
-          Array.from({ length: Math.min(this.concurrency, gateways.length) }, worker)
-        )
+        const workers = Array.from({ length: Math.min(this.concurrency, gateways.length) }, worker)
+        try {
+          await Promise.all(workers)
+        } catch (error) {
+          cycle.abort()
+          await Promise.allSettled(workers)
+          throw error
+        }
       }
-      stats.budgetExhausted = cycle.signal.aborted
+      stats.budgetExhausted = cycle.signal.aborted && !stats.leaseLost
       return stats
     } finally {
       clearTimeout(cycleTimer)
-      this.running = false
+      cycle.abort()
+      try {
+        if (lease) await this.leases.release(lease)
+      } finally {
+        this.running = false
+      }
     }
   }
 }

@@ -13,3 +13,5 @@
 O LightRAG só deve indexar estas notas curadas, não o workspace inteiro. Escolha de modelo e configuração ainda pendentes. A busca local atual não usa LightRAG nem modelo.
 
 Ver [[Mapa]], [[Backend]], [[Testes]], [[App]].
+
+- Em 2026-10-30, usuário escolheu tornar o provedor VPN substituível. Trocar padrão vale somente para novos gateways; legados e reservas ficam no fornecedor original. Novo serviço requer adapter registrado e homologação, preservando as regras do backend.

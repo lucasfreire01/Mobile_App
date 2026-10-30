@@ -1,0 +1,10 @@
+{
+  "verifiedAt": "2026-10-30T11:43:19.934Z",
+  "gatewayId": 4,
+  "address": "10.42.0.126",
+  "allowedCidr": "10.42.0.126/32",
+  "mode": "read-only SSH probe",
+  "hostKeyVerified": true,
+  "commandExitCode": 0,
+  "observation": "Linux\n4: eth0    inet 10.42.0.126/24 scope global eth0\\       valid_lft forever preferred_lft forever\n4: eth0    inet 168.168.168.253/24 scope global eth0\\       valid_lft forever preferred_lft forever"
+}

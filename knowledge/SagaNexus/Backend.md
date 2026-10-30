@@ -22,3 +22,11 @@ AdonisJS 7, Lucid e PostgreSQL. Raiz: `mobile_vpn/`.
 Procurar símbolos no arquivo certo com `rg -n` antes de abrir trechos. Detalhes do provisionamento: `docs/gateway-ip-reservations.md`.
 
 Ver [[Estado]], [[Testes]], [[Decisoes]].
+
+## Coordenação do monitor — 2026-10-30
+
+Ver [[Monitor-Replicas-2026-10-30]]: `app/services/gateway_monitor_lease_service.ts`, `app/jobs/gateway_status_job.ts`, migração `1793400000000_create_gateway_monitor_state.ts`. Cursor e posse compartilhados via PostgreSQL; grants mínimos em `scripts/database-roles.mjs` e `scripts/provision-database-runtime.mjs`. Validação local com duas APIs e 96 testes aprovada.
+
+## Camada de provedores VPN — 2026-10-30
+
+Ver [[Provedores-VPN-2026-10-30]]. Registro em `config/vpn.ts`, contrato/adapter/registry em `app/services/vpn/`; provisionamento, perfil, exclusão, rotas e cleanup desacoplados da API CloudConnexa. Migração `1793500000000_bind_vpn_providers` preserva legados e vincula cada gateway/reserva ao seu provedor. 105 testes e checks aprovados; segundo provedor real ainda depende de implementação específica.

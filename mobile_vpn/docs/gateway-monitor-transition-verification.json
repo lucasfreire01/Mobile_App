@@ -1,0 +1,160 @@
+{
+  "startedAt": "2026-10-30T11:56:13.772Z",
+  "scope": "laboratory; real monitor with temporary backend-only SSH port failure; gateway network unchanged",
+  "stages": [
+    {
+      "label": "initial-online",
+      "verifiedAt": "2026-10-30T11:56:15.595Z",
+      "database": {
+        "id": 4,
+        "management_ip_address": "10.42.0.126",
+        "status": "online",
+        "last_seen_at": "2026-10-30T11:55:11.586Z",
+        "wan_ip_address": "10.42.0.126",
+        "wan_ip_observed_at": "2026-10-30T11:55:11.586Z"
+      },
+      "api": {
+        "status": "online",
+        "lastSeenAt": "2026-10-30T08:55:11.586-03:00",
+        "wanIpAddress": "10.42.0.126"
+      },
+      "screenStatus": "ONLINE",
+      "screenshot": "/tmp/saganexus-transition-initial-online.png",
+      "requests": [
+        {
+          "url": "http://10.4.5.161:3333/api/v1/gateways/4",
+          "status": 204
+        },
+        {
+          "url": "http://10.4.5.161:3333/api/v1/gateways/4/ethernet",
+          "status": 204
+        },
+        {
+          "url": "http://10.4.5.161:3333/api/v1/gateways/4/network-operations?page=1&limit=1",
+          "status": 204
+        },
+        {
+          "url": "http://10.4.5.161:3333/api/v1/gateways/4/security-alerts?page=1&limit=20",
+          "status": 204
+        },
+        {
+          "url": "http://10.4.5.161:3333/api/v1/gateways/4",
+          "status": 200
+        },
+        {
+          "url": "http://10.4.5.161:3333/api/v1/gateways/4/security-alerts?page=1&limit=20",
+          "status": 200
+        },
+        {
+          "url": "http://10.4.5.161:3333/api/v1/gateways/4/ethernet",
+          "status": 200
+        },
+        {
+          "url": "http://10.4.5.161:3333/api/v1/gateways/4/network-operations?page=1&limit=1",
+          "status": 200
+        }
+      ]
+    },
+    {
+      "label": "ssh-unavailable",
+      "verifiedAt": "2026-10-30T11:56:26.411Z",
+      "database": {
+        "id": 4,
+        "management_ip_address": "10.42.0.126",
+        "status": "offline",
+        "last_seen_at": "2026-10-30T11:55:11.586Z",
+        "wan_ip_address": "10.42.0.126",
+        "wan_ip_observed_at": "2026-10-30T11:55:11.586Z"
+      },
+      "api": {
+        "status": "offline",
+        "lastSeenAt": "2026-10-30T08:55:11.586-03:00",
+        "wanIpAddress": "10.42.0.126"
+      },
+      "screenStatus": "OFFLINE",
+      "screenshot": "/tmp/saganexus-transition-ssh-unavailable.png",
+      "requests": [
+        {
+          "url": "http://10.4.5.161:3333/api/v1/gateways/4",
+          "status": 200
+        },
+        {
+          "url": "http://10.4.5.161:3333/api/v1/gateways/4/ethernet",
+          "status": 200
+        },
+        {
+          "url": "http://10.4.5.161:3333/api/v1/gateways/4/security-alerts?page=1&limit=20",
+          "status": 200
+        },
+        {
+          "url": "http://10.4.5.161:3333/api/v1/gateways/4/network-operations?page=1&limit=1",
+          "status": 200
+        }
+      ]
+    },
+    {
+      "label": "recovered-online",
+      "verifiedAt": "2026-10-30T11:56:31.444Z",
+      "database": {
+        "id": 4,
+        "management_ip_address": "10.42.0.126",
+        "status": "online",
+        "last_seen_at": "2026-10-30T11:56:29.000Z",
+        "wan_ip_address": "10.42.0.126",
+        "wan_ip_observed_at": "2026-10-30T11:56:29.000Z"
+      },
+      "api": {
+        "status": "online",
+        "lastSeenAt": "2026-10-30T08:56:29.000-03:00",
+        "wanIpAddress": "10.42.0.126"
+      },
+      "screenStatus": "ONLINE",
+      "screenshot": "/tmp/saganexus-transition-recovered-online.png",
+      "requests": [
+        {
+          "url": "http://10.4.5.161:3333/api/v1/gateways/4",
+          "status": 200
+        },
+        {
+          "url": "http://10.4.5.161:3333/api/v1/gateways/4/ethernet",
+          "status": 200
+        },
+        {
+          "url": "http://10.4.5.161:3333/api/v1/gateways/4/network-operations?page=1&limit=1",
+          "status": 200
+        },
+        {
+          "url": "http://10.4.5.161:3333/api/v1/gateways/4/security-alerts?page=1&limit=20",
+          "status": 200
+        }
+      ]
+    }
+  ],
+  "schedulerEvents": [
+    {
+      "event": "gateway_status_cycle",
+      "checked": 1,
+      "offline": 1,
+      "writeErrors": 0
+    }
+  ],
+  "restoredBackendPid": 35606,
+  "result": "passed",
+  "health": {
+    "status": "ok",
+    "database": "ok"
+  },
+  "browserErrors": [],
+  "finishedAt": "2026-10-30T11:56:31.448Z",
+  "nativeValidation": {
+    "status": "not-run",
+    "host": "Linux",
+    "missingTools": [
+      "adb",
+      "emulator",
+      "java"
+    ],
+    "androidSdkConfigured": false,
+    "defaultAndroidSdkExists": false
+  }
+}

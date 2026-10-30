@@ -1,0 +1,74 @@
+{
+  "startedAt": "2026-10-30T13:43:54.052Z",
+  "scope": "two local backend processes, shared operational database, read-only SSH probes; no gateway configuration applied",
+  "primaryPid": 113446,
+  "secondaryPid": 113447,
+  "secondaryPort": 45641,
+  "health": [
+    {
+      "status": "ok",
+      "database": "ok"
+    },
+    {
+      "status": "ok",
+      "database": "ok"
+    }
+  ],
+  "primaryCycles": [
+    {
+      "checked": 1,
+      "offline": 0,
+      "skipped": false,
+      "writeErrors": 0,
+      "budgetExhausted": false,
+      "leaseLost": false
+    }
+  ],
+  "secondaryCycles": [
+    {
+      "checked": 0,
+      "offline": 0,
+      "skipped": true,
+      "writeErrors": 0,
+      "budgetExhausted": false,
+      "leaseLost": false
+    }
+  ],
+  "state": [
+    {
+      "name": "gateway-status",
+      "cursor_id": "0",
+      "leased": false
+    }
+  ],
+  "gateway": {
+    "id": 4,
+    "status": "online",
+    "last_seen_at": "2026-10-30T13:43:57.995Z",
+    "wan_ip_address": "10.42.0.126"
+  },
+  "result": "passed",
+  "secondaryStopRequested": true,
+  "finalHealth": {
+    "status": "ok",
+    "database": "ok"
+  },
+  "finishedAt": "2026-10-30T13:43:58.170Z",
+  "secondaryStopped": true,
+  "cleanupVerifiedAt": "2026-10-30T13:45:34.495Z",
+  "checks": {
+    "regressionTests": 96,
+    "temporaryDatabaseRemoved": true,
+    "temporaryRoleRemoved": true,
+    "runtimePermissionTest": "passed; DML with rollback and DDL restrictions",
+    "lint": "passed",
+    "typecheck": "passed",
+    "build": "passed",
+    "localMigrationApplied": true,
+    "runtimeTablePrivileges": [
+      "SELECT",
+      "INSERT",
+      "UPDATE"
+    ]
+  }
+}

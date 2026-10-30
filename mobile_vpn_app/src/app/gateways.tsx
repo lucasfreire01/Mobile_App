@@ -22,14 +22,43 @@ type Gateway = {
   wanIpAddress: string | null;
 };
 
+type Pagination = { total: number; currentPage: number; lastPage: number };
+type NetworkSummary = { total: number; online: number; offline: number };
+
 export default function GatewaysScreen() {
   const { token, user, logout, apiFetch, isRestoring } = useAuth();
-  const fetching = useRef(false);
+  const activeRequest = useRef<AbortController | null>(null);
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<"all" | "online" | "offline">("all");
   const [gateways, setGateways] = useState<Gateway[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [pagination, setPagination] = useState<Pagination>({
+    total: 0,
+    currentPage: 1,
+    lastPage: 1,
+  });
+  const [summary, setSummary] = useState<NetworkSummary>({
+    total: 0,
+    online: 0,
+    offline: 0,
+  });
+  const [listRequest, setListRequest] = useState({
+    page: 1,
+    q: "",
+    status: "all",
+  });
+
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      setListRequest((current) =>
+        current.q === query.trim() && current.status === filter
+          ? current
+          : { page: 1, q: query.trim(), status: filter },
+      );
+    }, 300);
+    return () => clearTimeout(timeout);
+  }, [query, filter]);
 
   const loadGateways = useCallback(async () => {
     if (isRestoring) return;
@@ -39,14 +68,26 @@ export default function GatewaysScreen() {
       return;
     }
 
-    if (fetching.current) return;
-    fetching.current = true;
+    activeRequest.current?.abort();
+    const controller = new AbortController();
+    activeRequest.current = controller;
     setLoading(true);
     setError(null);
 
     try {
-      const response = await apiFetch(`${getApiUrl()}/gateways`);
+      const params = new URLSearchParams({
+        page: String(listRequest.page),
+        limit: "20",
+      });
+      if (listRequest.q) params.set("q", listRequest.q);
+      if (listRequest.status !== "all")
+        params.set("status", listRequest.status);
+      const response = await apiFetch(`${getApiUrl()}/gateways?${params}`, {
+        signal: controller.signal,
+      });
       const body = await response.json().catch(() => null);
+
+      if (controller.signal.aborted) return;
 
       if (!response.ok) {
         throw new Error(
@@ -55,21 +96,34 @@ export default function GatewaysScreen() {
         );
       }
 
-      setGateways(body?.gatewaysList ?? []);
+      if (!body?.meta || !body?.summary || !Array.isArray(body.gatewaysList)) {
+        throw new Error("Resposta inválida ao carregar os gateways.");
+      }
+      if (listRequest.page > body.meta.lastPage) {
+        setListRequest((current) => ({ ...current, page: body.meta.lastPage }));
+        return;
+      }
+      setGateways(body.gatewaysList);
+      setPagination(body.meta);
+      setSummary(body.summary);
     } catch (loadError) {
+      if (controller.signal.aborted) return;
       setError(
         loadError instanceof Error
           ? loadError.message
           : "Não foi possível carregar os gateways.",
       );
     } finally {
-      fetching.current = false;
-      setLoading(false);
+      if (activeRequest.current === controller) {
+        activeRequest.current = null;
+        setLoading(false);
+      }
     }
-  }, [apiFetch, isRestoring, token]);
+  }, [apiFetch, isRestoring, token, listRequest]);
 
   useEffect(() => {
     void Promise.resolve().then(loadGateways);
+    return () => activeRequest.current?.abort();
   }, [loadGateways]);
 
   async function handleLogout() {
@@ -77,16 +131,9 @@ export default function GatewaysScreen() {
     router.replace("/login");
   }
 
-  const online = gateways.filter(
-    (gateway) => gateway.status === "online",
-  ).length;
-  const visibleGateways = gateways.filter(
-    (gateway) =>
-      (filter === "all" || gateway.status === filter) &&
-      `${gateway.name} ${gateway.managementIpAddress} ${gateway.wanIpAddress ?? ""}`
-        .toLowerCase()
-        .includes(query.toLowerCase()),
-  );
+  const online = summary.online;
+  const changingFilters =
+    query.trim() !== listRequest.q || filter !== listRequest.status;
   return (
     <SafeAreaView
       className="flex-1 bg-brand-blueDark"
@@ -122,7 +169,7 @@ export default function GatewaysScreen() {
           <View className="mt-5 flex-row items-center border-t border-white/15 pt-4">
             <View className="flex-row items-end gap-2">
               <Text className="text-[28px] font-bold leading-8 text-white">
-                {String(gateways.length).padStart(2, "0")}
+                {String(summary.total).padStart(2, "0")}
               </Text>
               <Text className="pb-1 text-[10px] font-bold tracking-[1.2px] text-[#c4d5d8]">
                 GATEWAYS
@@ -141,7 +188,7 @@ export default function GatewaysScreen() {
                 </Text>
               </View>
               <Text className="text-xs font-semibold text-[#b9ced5]">
-                {gateways.length - online} offline
+                {summary.offline} offline
               </Text>
             </View>
           </View>
@@ -174,7 +221,7 @@ export default function GatewaysScreen() {
       <FlatList
         className="flex-1 bg-canvas"
         contentContainerClassName="w-full max-w-5xl self-center flex-grow px-5 py-6 pb-10 md:py-8"
-        data={visibleGateways}
+        data={gateways}
         keyExtractor={(gateway) => String(gateway.id)}
         ListHeaderComponent={
           <View>
@@ -182,7 +229,7 @@ export default function GatewaysScreen() {
               <Text className="flex-1 text-[10px] font-bold tracking-[1.2px] text-slate-500">
                 {loading && !gateways.length
                   ? "LENDO A REDE…"
-                  : `ATUALIZADO · ${gateways.length} EQUIPAMENTOS`}
+                  : `${gateways.length} DE ${pagination.total} EQUIPAMENTOS`}
               </Text>
               <Pressable
                 accessibilityRole="button"
@@ -205,6 +252,7 @@ export default function GatewaysScreen() {
                   accessibilityLabel="Buscar gateways por nome ou IP"
                   value={query}
                   onChangeText={setQuery}
+                  maxLength={200}
                   placeholder="Buscar por nome ou endereço IP"
                   placeholderTextColor="#64748b"
                   className="min-h-12 flex-1 text-sm text-slate-900"
@@ -239,8 +287,8 @@ export default function GatewaysScreen() {
                 NÓS DA REDE
               </Text>
               <Text className="text-xs text-slate-600">
-                {visibleGateways.length}{" "}
-                {visibleGateways.length === 1 ? "resultado" : "resultados"}
+                {pagination.total}{" "}
+                {pagination.total === 1 ? "resultado" : "resultados"}
               </Text>
             </View>
             {error ? (
@@ -266,7 +314,7 @@ export default function GatewaysScreen() {
         }
         ListEmptyComponent={
           !loading && !error ? (
-<View className="items-start border-l-2 border-brand-blue px-5 py-8">
+            <View className="items-start border-l-2 border-brand-blue px-5 py-8">
               <Text className="text-xl font-bold text-brand-blueDark">
                 {query || filter !== "all"
                   ? "Nenhum resultado encontrado"
@@ -287,6 +335,66 @@ export default function GatewaysScreen() {
             refreshing={false}
             onRefresh={() => void loadGateways()}
           />
+        }
+        ListFooterComponent={
+          pagination.lastPage > 1 ? (
+            <View className="mt-5 flex-row items-center justify-between gap-3 border-t border-[#cddbd5] pt-4">
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Página anterior de gateways"
+                accessibilityState={{
+                  disabled:
+                    loading || changingFilters || pagination.currentPage <= 1,
+                }}
+                disabled={
+                  loading || changingFilters || pagination.currentPage <= 1
+                }
+                onPress={() =>
+                  setListRequest((current) => ({
+                    ...current,
+                    page: pagination.currentPage - 1,
+                  }))
+                }
+                className={`min-h-12 justify-center rounded-lg px-3 ${pagination.currentPage <= 1 || loading || changingFilters ? "opacity-40" : "bg-white"}`}
+              >
+                <Text className="text-sm font-bold text-brand-blueDark">
+                  Anterior
+                </Text>
+              </Pressable>
+              <Text
+                accessibilityLiveRegion="polite"
+                className="text-xs text-slate-600"
+              >
+                Página {pagination.currentPage} de {pagination.lastPage}
+              </Text>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Próxima página de gateways"
+                accessibilityState={{
+                  disabled:
+                    loading ||
+                    changingFilters ||
+                    pagination.currentPage >= pagination.lastPage,
+                }}
+                disabled={
+                  loading ||
+                  changingFilters ||
+                  pagination.currentPage >= pagination.lastPage
+                }
+                onPress={() =>
+                  setListRequest((current) => ({
+                    ...current,
+                    page: pagination.currentPage + 1,
+                  }))
+                }
+                className={`min-h-12 justify-center rounded-lg px-3 ${pagination.currentPage >= pagination.lastPage || loading || changingFilters ? "opacity-40" : "bg-white"}`}
+              >
+                <Text className="text-sm font-bold text-brand-blueDark">
+                  Próxima
+                </Text>
+              </Pressable>
+            </View>
+          ) : undefined
         }
         renderItem={({ item }) => (
           <Pressable
@@ -311,7 +419,7 @@ export default function GatewaysScreen() {
               <View className="flex-row items-start justify-between gap-3">
                 <View className="flex-1">
                   <Text className="text-[9px] font-bold tracking-[1.4px] text-slate-500">
-                    BROWAN PICO NEXT  /  {String(item.id).padStart(3, "0")}
+                    BROWAN PICO NEXT / {String(item.id).padStart(3, "0")}
                   </Text>
                   <Text className="mt-1.5 text-lg font-bold leading-6 text-brand-blueDark">
                     {item.name}

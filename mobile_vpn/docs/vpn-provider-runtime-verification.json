@@ -1,0 +1,10 @@
+{
+  "verifiedAt": "2026-10-30T14:20:21.509Z",
+  "backendPid": 148297,
+  "health": {
+    "status": "ok",
+    "database": "ok"
+  },
+  "defaultProvider": "cloudconnexa",
+  "externalProvisioningPerformed": false
+}

@@ -3,11 +3,13 @@ import { setImmediate } from 'node:timers/promises'
 import { DateTime } from 'luxon'
 import Gateway from '#models/gateway'
 import GatewayStatusJob from '#jobs/gateway_status_job'
+import db from '@adonisjs/lucid/services/db'
 
 test.group('Bounded gateway status monitoring', (group) => {
   let sequence = 1
   group.each.setup(async () => {
     await Gateway.query().delete()
+    await db.from('gateway_monitor_states').delete()
     sequence = 1
   })
   async function gateway() {
@@ -34,6 +36,10 @@ test.group('Bounded gateway status monitoring', (group) => {
     let active = 0
     let maximum = 0
     const seen: number[] = []
+    let releaseFirstPair!: () => void
+    const firstPair = new Promise<void>((resolve) => {
+      releaseFirstPair = resolve
+    })
     const job = new GatewayStatusJob({
       concurrency: 2,
       batchSize: 3,
@@ -41,6 +47,8 @@ test.group('Bounded gateway status monitoring', (group) => {
         active++
         maximum = Math.max(maximum, active)
         seen.push(entry.id)
+        if (seen.length === 2) releaseFirstPair()
+        await firstPair
         await setImmediate()
         active--
         return { wanIpAddress: '192.0.2.2' }
@@ -151,7 +159,6 @@ test.group('Bounded gateway status monitoring', (group) => {
     await gateway()
     first.status = 'online'
     await first.save()
-    let hanging = true
     const seen: number[] = []
     const job = new GatewayStatusJob({
       concurrency: 1,
@@ -159,8 +166,7 @@ test.group('Bounded gateway status monitoring', (group) => {
       cycleTimeoutMs: 100,
       probe: async (entry, signal) => {
         seen.push(entry.id)
-        if (hanging) return waitForAbort(signal)
-        return { wanIpAddress: null }
+        return waitForAbort(signal)
       },
     })
     const expired = await job.run()
@@ -168,8 +174,12 @@ test.group('Bounded gateway status monitoring', (group) => {
     assert.equal(expired.checked, 0)
     await first.refresh()
     assert.equal(first.status, 'online')
-    hanging = false
-    const resumed = await job.run()
+    const resumed = await new GatewayStatusJob({
+      probe: async (entry) => {
+        seen.push(entry.id)
+        return { wanIpAddress: null }
+      },
+    }).run()
     assert.equal(resumed.checked, 2)
     assert.equal(new Set(seen).size, 3)
   })

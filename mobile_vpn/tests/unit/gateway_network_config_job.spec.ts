@@ -7,6 +7,8 @@ import GatewayNetworkConfigJob, {
 import Gateway from '#models/gateway'
 import GatewayNetworkOperation from '#models/gateway_network_operation'
 import GatewaySecurityAlert from '#models/gateway_security_alert'
+import config from '@adonisjs/core/services/config'
+import type { VpnProviderFactory } from '#services/vpn/types'
 
 const PROCESSING_TOKEN = '5e9f4c53-22f4-4da9-988d-84df68caed58'
 
@@ -92,8 +94,8 @@ test.group('GatewayNetworkConfigJob', (group) => {
           calls.push('ssh.waitForConnection')
         },
       },
-      cloudConnexaService: {
-        updateIpServiceRoutes: async (_ipServiceId, routes) => {
+      vpnProvider: {
+        updateRoutes: async (_ipServiceId, routes) => {
           calls.push('cloud.updateIpServiceRoutes')
           cloudRoutes.push(routes)
         },
@@ -114,6 +116,101 @@ test.group('GatewayNetworkConfigJob', (group) => {
 
     throw new Error('Expected the job to throw an Exception')
   }
+
+  test('updates generic VPN routes using the gateway provider even after the default changes', async ({
+    assert,
+  }) => {
+    const original = config.get<{
+      defaultProvider: string
+      providers: Record<string, VpnProviderFactory>
+    }>('vpn')
+    const routes: string[][] = []
+    config.set('vpn', {
+      defaultProvider: 'replacement',
+      providers: {
+        ...original.providers,
+        replacement: () => {
+          throw new Error('The new default must not handle an existing gateway')
+        },
+        pinned: () => ({
+          id: 'pinned',
+          createGateway: async () => {
+            throw new Error('unexpected provisioning')
+          },
+          getProfile: async () => {
+            throw new Error('unexpected profile')
+          },
+          deleteGateway: async () => {
+            throw new Error('unexpected deletion')
+          },
+          updateRoutes: async (id: string, values: string[]) => {
+            assert.equal(id, 'generic-route')
+            routes.push(values)
+          },
+        }),
+      },
+    })
+    try {
+      const gateway = await createGateway()
+      gateway.vpnProvider = 'pinned'
+      gateway.vpnResources = {
+        networkId: 'generic-network',
+        connectorId: 'generic-connector',
+        routeId: 'generic-route',
+      }
+      await gateway.save()
+      const operation = await createOperation(gateway.id, {
+        mode: 'static',
+        dhcpFallbackEnabled: false,
+        staticIpAddress: '10.42.0.200',
+        staticPrefixLength: 24,
+        staticGateway: '10.42.0.1',
+        primaryDns: '10.42.0.1',
+        secondaryDns: null,
+      })
+      const dependencies = createDependencies()
+      delete dependencies.vpnProvider
+      const result = await new GatewayNetworkConfigJob(
+        operation.id,
+        PROCESSING_TOKEN,
+        dependencies
+      ).run()
+      assert.equal(result.action, 'static_applied')
+      assert.deepEqual(routes, [['10.42.0.126', '10.42.0.200'], ['10.42.0.200']])
+      await gateway.refresh()
+      assert.isNull(gateway.ccIpServiceId)
+      assert.equal(gateway.vpnProvider, 'pinned')
+    } finally {
+      config.set('vpn', original)
+    }
+  })
+
+  test('fails before SSH when the gateway provider is unavailable rather than using the default', async ({
+    assert,
+  }) => {
+    const gateway = await createGateway()
+    gateway.vpnProvider = 'missing'
+    gateway.vpnResources = { routeId: 'missing-provider-route' }
+    await gateway.save()
+    const operation = await createOperation(gateway.id, {
+      mode: 'static',
+      dhcpFallbackEnabled: false,
+      staticIpAddress: '10.42.0.200',
+      staticPrefixLength: 24,
+      staticGateway: '10.42.0.1',
+      primaryDns: '10.42.0.1',
+      secondaryDns: null,
+    })
+    const dependencies = createDependencies()
+    delete dependencies.vpnProvider
+    const error = await captureException(() =>
+      new GatewayNetworkConfigJob(operation.id, PROCESSING_TOKEN, dependencies).run()
+    )
+    assert.equal(error.code, 'E_VPN_PROVIDER_NOT_CONFIGURED')
+    assert.deepEqual(dependencies.calls, ['lock.acquire', 'lock.release'])
+    await operation.refresh()
+    assert.equal(operation.status, 'failed')
+  })
 
   test('applies DHCP and marks its operation as applied', async ({ assert }) => {
     const gateway = await createGateway()

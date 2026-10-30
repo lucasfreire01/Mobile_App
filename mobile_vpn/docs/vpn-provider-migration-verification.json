@@ -1,0 +1,15 @@
+{
+  "verifiedAt": "2026-10-30T14:16:37.309Z",
+  "gatewayCount": 1,
+  "reservationCount": 0,
+  "legacyIdentifiersUnchanged": true,
+  "reservationsUnchanged": true,
+  "gateways": [
+    {
+      "id": 4,
+      "vpn_provider": "cloudconnexa",
+      "legacy_fallback": true
+    }
+  ],
+  "result": "passed"
+}

@@ -5,8 +5,15 @@ import { DateTime } from 'luxon'
 import GatewayEthernetConfig from './gateway_ethernet_config.ts'
 import GatewayNetworkOperation from '#models/gateway_network_operation'
 import GatewaySshHostKeyRotation from '#models/gateway_ssh_host_key_rotation'
+import type { VpnResources } from '#services/vpn/types'
 
 export default class Gateway extends GatewaySchema {
+  @column()
+  declare vpnProvider: string
+
+  @column({ prepare: (value) => (value === null ? null : JSON.stringify(value)) })
+  declare vpnResources: Partial<VpnResources> | null
+
   @column({ serializeAs: null })
   declare networkLockToken: string | null
 

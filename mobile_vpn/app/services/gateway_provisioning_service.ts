@@ -3,7 +3,8 @@ import { Exception } from '@adonisjs/core/exceptions'
 import { randomUUID } from 'node:crypto'
 import Gateway from '#models/gateway'
 import GatewayService from '#services/gateway_service'
-import CloudConnexaService from '#services/cloud_connexa_service'
+import { resolveVpnProvider, gatewayVpnAttributes } from '#services/vpn/registry'
+import { VpnProvisioningRejectedError, type VpnProvider } from '#services/vpn/types'
 import { ensureAllowedSshAddress } from '#services/gateway_ssh_address_policy'
 
 type Payload = {
@@ -13,7 +14,6 @@ type Payload = {
   location?: string
   sshHostKeyFingerprint?: string
 }
-type Cloud = Pick<CloudConnexaService, 'createGatewayResources' | 'deleteNetwork'>
 export const MANAGEMENT_IP_LOCK = 73624711
 
 export function managementIpConflict() {
@@ -31,9 +31,10 @@ export function rethrowManagementIpConflict(error: unknown): never {
 }
 
 export default class GatewayProvisioningService {
-  constructor(private cloud: Cloud = new CloudConnexaService()) {}
+  constructor(private provider?: VpnProvider) {}
 
   async create(payload: Payload) {
+    const provider = this.provider ?? (await resolveVpnProvider())
     const token = randomUUID()
     const managementIpAddress = await db.transaction(async (trx) => {
       await trx.rawQuery("SET LOCAL lock_timeout = '5s'")
@@ -52,13 +53,15 @@ export default class GatewayProvisioningService {
         .where('management_ip_address', ip)
         .first()
       if (existing || reserved) throw managementIpConflict()
-      await trx.table('gateway_ip_reservations').insert({ management_ip_address: ip, token })
+      await trx
+        .table('gateway_ip_reservations')
+        .insert({ management_ip_address: ip, token, vpn_provider: provider.id })
       return ip
     })
 
     let networkId: string | undefined
     try {
-      const vpn = await this.cloud.createGatewayResources(
+      const vpn = await provider.createGateway(
         new GatewayService().toNetworkName(payload.name),
         managementIpAddress,
         async (createdNetworkId) => {
@@ -69,15 +72,24 @@ export default class GatewayProvisioningService {
             .update({ network_id: networkId, updated_at: new Date() })
         }
       )
-      networkId = vpn.networkId
+      networkId = vpn?.networkId || networkId
+      if (
+        !vpn ||
+        ![vpn.networkId, vpn.connectorId, vpn.routeId].every(
+          (id) => typeof id === 'string' && id.trim().length > 0
+        )
+      ) {
+        throw new Exception('VPN provider returned incomplete resources.', {
+          status: 502,
+          code: 'E_VPN_RESOURCES_INVALID',
+        })
+      }
       return await db.transaction(async (trx) => {
         const gateway = await Gateway.create(
           {
             ...payload,
             managementIpAddress,
-            ccNetworkId: vpn.networkId,
-            ccConnectorId: vpn.connectorId,
-            ccIpServiceId: vpn.ipServiceId,
+            ...gatewayVpnAttributes(provider.id, vpn),
           },
           { client: trx }
         )
@@ -91,7 +103,7 @@ export default class GatewayProvisioningService {
           .where('token', token)
           .update({ network_id: networkId, status: 'cleanup_required', updated_at: new Date() })
         try {
-          await this.cloud.deleteNetwork(networkId)
+          await provider.deleteGateway(networkId)
         } catch {
           throw new Exception(
             'Provisioning failed; resource cleanup is pending and the IP remains reserved.',
@@ -100,9 +112,8 @@ export default class GatewayProvisioningService {
         }
         await db.from('gateway_ip_reservations').where('token', token).delete()
       } else {
-        const code = (error as { code?: string })?.code ?? ''
         // A definitive rejected POST created nothing. A lost response is ambiguous.
-        if (/^E_CLOUDCONNEXA_4\d\d$/.test(code) && code !== 'E_CLOUDCONNEXA_408') {
+        if (error instanceof VpnProvisioningRejectedError) {
           await db.from('gateway_ip_reservations').where('token', token).delete()
         } else {
           await db
@@ -129,7 +140,12 @@ export default class GatewayProvisioningService {
         .skipLocked()
         .first()
       if (!reservation?.network_id) return false
-      await this.cloud.deleteNetwork(reservation.network_id)
+      const injected = this.provider
+      const provider =
+        injected && injected.id === reservation.vpn_provider
+          ? injected
+          : await resolveVpnProvider(reservation.vpn_provider)
+      await provider.deleteGateway(reservation.network_id)
       await trx.from('gateway_ip_reservations').where('id', id).delete()
       return true
     })

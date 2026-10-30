@@ -20,3 +20,17 @@ Prévia web usada: localhost:8082; backend: localhost:3333. São endereços conh
 Capturas web não comprovam funcionamento nativo em dispositivos.
 
 Ver [[Decisoes]], [[Estado]].
+
+## Validação web em 2026-10-30
+
+Expo Web em http://localhost:8081, API real local. Login com usuário de desenvolvimento configurado; listagem e detalhe do gateway 4 carregaram com HTTP 200. Tela exibiu ONLINE, gerenciamento/WAN 10.42.0.126 e Ethernet estática. Botão Atualizar consultou novamente detalhe, Ethernet, operações e alertas com HTTP 200. Sem exceções JS observadas; viewport 390px sem overflow horizontal; conferência visual também em 1440px. Sem mudanças no código do app. Evidência: `mobile_vpn/docs/gateway-app-web-verification.json`. A atualização automática da tela ocorre durante operação pending/applying; atualização comum foi validada pelo botão. Não valida Android/iOS nativos nem transição online/offline.
+
+Transição ONLINE → OFFLINE → ONLINE validada com atualização manual da tela em 2026-10-30; ver [[Validacao-Transicao-2026-10-30]]. Testes nativos continuam pendentes.
+
+## Lista paginada em 2026-10-30
+
+Ver [[Paginacao-2026-10-30]]: páginas de 20 com Anterior/Próxima; busca/filtro de status no servidor, debounce e cancelamento de requisições antigas; totais globais. Browser validado com 23 fixtures em banco isolado e gateway real após reiniciar backend. Sem mudanças em autenticação, rotas ou provisionamento.
+
+## Patches de dependências em 2026-10-30
+
+Expo 58.0.21, constants 58.0.14, linking 58.0.15, router 58.0.28 e React Native 0.88.1; compatibilidade online, lint/TypeScript, web real e bundle Android aprovados. Advisories de tooling persistem; ver [[Dependencias-2026-10-30]].

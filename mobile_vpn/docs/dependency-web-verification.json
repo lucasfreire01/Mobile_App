@@ -1,0 +1,48 @@
+{
+  "verifiedAt": "2026-10-30T13:18:22.397Z",
+  "origin": "http://localhost:8081",
+  "view": {
+    "url": "http://localhost:8081/gateways/4",
+    "text": "ATUALIZAR\n‹\nSAGANEXUS  /  OPERAÇÃO REMOTA\ngateway-teste\nGateways / Detalhes\nEstado atual\nONLINE\nGerenciamento: 10.42.0.126\nWAN: 10.42.0.126\nÚltima vez online: 30/10/2026, 10:17\nConfiguração Ethernet\nModo: STATIC\nFallback DHCP: Desativado\nIP: 10.42.0.126/24\nGateway: 10.42.0.1\nDNS: 10.42.0.1\nEditar configuração\nSalvar não muda a rede. A alteração só chega ao gateway quando você aplicar a configuração.\nModo\nDHCP AUTOMÁTICO\nIP ESTÁTICO\nEndereço estático\nEndereço IP\nPrefixo de rede\nGateway da rede\nDNS primário\nDNS secundário · opcional\nSalvar configuração\nAplicar configuração\nOperação #19 aplicada com sucesso.\nÚltima operação\nAção: apply_static\nAplicada\nTentativas: 1\nVer histórico de operações\nAlertas de segurança\nNenhum alerta registrado."
+  },
+  "mobile": {
+    "width": 390,
+    "scrollWidth": 390,
+    "text": "ATUALIZAR\n‹\nSAGANEXUS  /  OPERAÇÃO REMOTA\ngateway-teste\nGateways / Detalhes\nEstado atual\nONLINE\nGerenciamento: 10.42.0.126\nWAN: 10.42.0.126\nÚltima vez online: 30/10/2026, 10:17\nConfiguração Ethernet\nModo: STATIC\nFallback DHCP: Desativado\nIP: 10.42.0.126/24\nGateway: 10.42.0.1\nDNS: 10.42.0.1\nEditar configuração\nSalvar não muda a rede. A alteração só chega ao gateway quando você aplicar a configuração.\nModo\nDHCP AUTOMÁTICO\nIP ESTÁTICO\nEndereço estático\nEndereço IP\nPrefixo de rede\nGateway da rede\nDNS primário\nDNS secundário · opcional\nSalvar configuração\nAplicar configuração\nOperação #19 aplicada com sucesso.\nÚltima operação\nAção: apply_static\nAplicada\nTentativas: 1\nVer histórico de operações\nAlertas de segurança\nNenhum alerta registrado."
+  },
+  "requests": [
+    {
+      "url": "http://10.4.5.161:3333/api/v1/auth/login",
+      "status": 204
+    },
+    {
+      "url": "http://10.4.5.161:3333/api/v1/auth/login",
+      "status": 200
+    },
+    {
+      "url": "http://10.4.5.161:3333/api/v1/gateways?page=1&limit=20",
+      "status": 204
+    },
+    {
+      "url": "http://10.4.5.161:3333/api/v1/gateways?page=1&limit=20",
+      "status": 200
+    },
+    {
+      "url": "http://10.4.5.161:3333/api/v1/gateways/4",
+      "status": 200
+    },
+    {
+      "url": "http://10.4.5.161:3333/api/v1/gateways/4/ethernet",
+      "status": 200
+    },
+    {
+      "url": "http://10.4.5.161:3333/api/v1/gateways/4/security-alerts?page=1&limit=20",
+      "status": 200
+    },
+    {
+      "url": "http://10.4.5.161:3333/api/v1/gateways/4/network-operations?page=1&limit=1",
+      "status": 200
+    }
+  ],
+  "errors": []
+}

@@ -42,6 +42,16 @@ provisionar recursos; cada conexão SSH também é validada, inclusive operaçõ
 antigas na fila. Para aplicar um IP estático de LAN, autorize a sub-rede específica
 antes da operação. Não configure redes amplas que incluam serviços internos.
 
+## Lista de gateways
+
+`GET /gateways?page=1&limit=20&q=texto&status=online`
+
+- `page`: inteiro positivo, padrão 1. `limit`: padrão 20, máximo 100; valores inválidos usam o padrão.
+- `q`: busca sem diferenciar maiúsculas/minúsculas por nome, IP de gerenciamento ou WAN em todo o inventário, antes de paginar. Espaços nas extremidades são removidos; máximo de 200 caracteres. `%` e `_` são literais.
+- `status`: `online`, `offline` ou `all` (padrão; valores desconhecidos também usam `all`).
+- Resposta: `message: "gateway_list"`, `gatewaysList` (apenas a página, ordenada por ID crescente), `meta` (total filtrado, página atual, última página, tamanho e links), `summary: { total, online, offline }` (contagens globais, sem aplicar busca ou filtro).
+- Os links de paginação preservam busca, status e limite. Uma página fora do intervalo retorna lista vazia; o app retorna à última página disponível. Clientes devem consumir `meta`, pois a lista deixou de retornar todo o inventário em uma resposta.
+
 ## Health
 
 ### `GET /health`
@@ -182,3 +192,9 @@ reconhecimento retorna `409 E_GATEWAY_SECURITY_ALERT_ALREADY_ACKNOWLEDGED`.
 
 Reconhecer confirma que o evento foi investigado; não troca a fingerprint. Se a
 chave do equipamento mudou legitimamente, use a rota de rotação e informe motivo.
+
+## Provedor VPN do gateway
+
+Gateway inclui `vpnProvider` e `vpnResources` (somente identificadores networkId/connectorId/routeId). O padrão para novos cadastros vem de `VPN_PROVIDER` e do registro em `config/vpn.ts`; o cliente não escolhe o provedor pelo payload. Gateways existentes e reservas permanecem vinculados ao provedor original após alterar o padrão.
+
+`GET /gateways/:id/vpn-profile` usa esse vínculo e retorna o conteúdo do perfil, com download `.ovpn` ou `.conf` conforme o formato do adaptador e `Cache-Control: no-store`. Sem adaptador configurado, retorna 503 sem usar outro fornecedor. Campos legados CloudConnexa são preservados. Ver [contrato e registro de adaptadores](vpn-providers.md).

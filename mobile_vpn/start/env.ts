@@ -43,9 +43,10 @@ export default await Env.create(new URL('../', import.meta.url), {
   GATEWAY_MONITOR_CYCLE_TIMEOUT_MS: Env.schema.number.optional(),
 
   // CloudConnexa
-  CLOUDCONNEXA_BASE_URL: Env.schema.string({ format: 'url', tld: false }),
-  CLOUDCONNEXA_CLIENT_ID: Env.schema.string(),
-  CLOUDCONNEXA_CLIENT_SECRET: Env.schema.secret(),
+  VPN_PROVIDER: Env.schema.string.optional(),
+  CLOUDCONNEXA_BASE_URL: Env.schema.string.optional({ format: 'url', tld: false }),
+  CLOUDCONNEXA_CLIENT_ID: Env.schema.string.optional(),
+  CLOUDCONNEXA_CLIENT_SECRET: Env.schema.secret.optional(),
   CLOUDCONNEXA_REGION: Env.schema.string.optional(),
   CLOUDCONNEXA_ACCESS_GROUP_ID: Env.schema.string.optional(),
   // Management IPs are allocated as <prefix>.2 .. <prefix>.254

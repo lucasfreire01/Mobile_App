@@ -77,7 +77,10 @@ try {
       await admin.query(
         `GRANT ${privileges.join(', ')} ON TABLE public.${identifier(table)} TO ${name}`
       )
-      if (privileges.includes('INSERT') && !['worker_heartbeats', 'rate_limits'].includes(table)) {
+      if (
+        privileges.includes('INSERT') &&
+        !['worker_heartbeats', 'rate_limits', 'gateway_monitor_states'].includes(table)
+      ) {
         const {
           rows: [sequence],
         } = await admin.query("SELECT pg_get_serial_sequence($1, 'id') AS name", [

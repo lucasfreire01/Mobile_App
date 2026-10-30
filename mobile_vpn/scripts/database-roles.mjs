@@ -18,6 +18,7 @@ export const tablePrivileges = {
   auth_access_tokens: ['SELECT', 'INSERT', 'UPDATE', 'DELETE'],
   gateways: ['SELECT', 'INSERT', 'UPDATE', 'DELETE'],
   gateway_ip_reservations: ['SELECT', 'INSERT', 'UPDATE', 'DELETE'],
+  gateway_monitor_states: ['SELECT', 'INSERT', 'UPDATE'],
   gateway_ethernet_configs: ['SELECT', 'INSERT', 'UPDATE'],
   gateway_network_operations: ['SELECT', 'INSERT', 'UPDATE'],
   gateway_security_alerts: ['SELECT', 'INSERT', 'UPDATE'],
@@ -98,7 +99,10 @@ export async function verifyRuntime(client) {
       if (result.allowed !== required.includes(permission))
         throw new Error(`Unexpected ${permission} privilege on ${table}`)
     }
-    if (required.includes('INSERT') && !['worker_heartbeats', 'rate_limits'].includes(table)) {
+    if (
+      required.includes('INSERT') &&
+      !['worker_heartbeats', 'rate_limits', 'gateway_monitor_states'].includes(table)
+    ) {
       const {
         rows: [sequence],
       } = await client.query("SELECT pg_get_serial_sequence($1, 'id') AS name", [`public.${table}`])

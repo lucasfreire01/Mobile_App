@@ -1,0 +1,54 @@
+{
+  "verifiedAt": "2026-10-30T14:23:44.694461+00:00",
+  "scope": "replaceable backend VPN adapters; CloudConnexa remains default",
+  "builtInProviders": [
+    "cloudconnexa"
+  ],
+  "alternateProvidersTested": [
+    "alpha (simulated)",
+    "beta (simulated)"
+  ],
+  "providerSelection": "configuration for new gateways; immutable through existing HTTP create/update payloads",
+  "persistedBinding": [
+    "gateways.vpn_provider",
+    "gateways.vpn_resources (identifier allowlist)",
+    "gateway_ip_reservations.vpn_provider"
+  ],
+  "checks": {
+    "regressionTests": 105,
+    "testDatabaseRemoved": true,
+    "testRoleRemoved": true,
+    "operationalDatabaseUsedForTests": false,
+    "lint": "passed",
+    "typecheck": "passed",
+    "build": "passed",
+    "runtimePermissionTest": "passed; JSONB binding DML with rollback",
+    "localMigration": "passed",
+    "legacyIdentifiersUnchanged": true,
+    "webLoginListDetail": "passed",
+    "webJsErrors": 0,
+    "mobileViewportWidth": 390,
+    "runtimeHealth": {
+      "status": "ok",
+      "database": "ok"
+    }
+  },
+  "scenarios": [
+    "new default applies only to new gateways",
+    "bound provider handles existing profiles, deletion and route updates",
+    "pending cleanup uses the reservation provider",
+    "unknown results retain IP reservation",
+    "explicit rejection releases reservation",
+    "incomplete adapter result is compensated",
+    "unavailable provider never falls back to the default",
+    "legacy CloudConnexa resources still work under an alternate default",
+    "provider extras are filtered from persisted and serialized resources"
+  ],
+  "externalVpnProvisioningPerformed": false,
+  "limitations": [
+    "No second real provider is implemented or connected",
+    "Existing bootstrap script installs OpenVPN; another protocol needs device-side integration validation",
+    "Native Android/iOS testing remains deferred"
+  ],
+  "result": "passed"
+}

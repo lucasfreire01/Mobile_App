@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Bounded retrieval of curated Obsidian notes; no model or external requests."""
+"""Bounded local LightRAG retrieval with explicit lexical fallback."""
 import argparse
 import json
 import re
@@ -19,7 +19,7 @@ def words(value):
     return set(re.findall(r"[a-z0-9_]+", normalized)) - STOP
 
 
-def search(query, limit=2, max_chars=1800):
+def lexical_search(query, limit=2, max_chars=1800):
     terms = words(query[:300])
     limit = max(1, min(int(limit), 3))
     budget = max(200, min(int(max_chars), 3000))
@@ -43,6 +43,25 @@ def search(query, limit=2, max_chars=1800):
         results.append({"note": path.stem, "path": str(path.relative_to(ROOT)), "line": start + 1, "score": score, "excerpt": excerpt, "truncated": len(excerpt) < len(content)})
         budget -= len(excerpt)
     return {"engine": "local-lexical-not-lightrag", "results": results, "returned_chars": sum(len(r["excerpt"]) for r in results)}
+
+
+def search(query, limit=2, max_chars=1800):
+    from urllib.request import urlopen
+    from urllib.parse import urlencode
+    from urllib.error import URLError
+    limit = max(1, min(int(limit), 3))
+    max_chars = max(200, min(int(max_chars), 3000))
+    params = urlencode({"q": query[:300], "limit": limit, "max_chars": max_chars})
+    try:
+        with urlopen("http://127.0.0.1:8768/search?" + params, timeout=240) as response:
+            result = json.loads(response.read(65536))
+        if result.get("engine") != "lightrag-local" or result.get("returned_chars", max_chars + 1) > max_chars:
+            raise ValueError("Invalid bounded LightRAG result")
+        return result
+    except (URLError, TimeoutError, ValueError, OSError):
+        result = lexical_search(query, limit, max_chars)
+        result["fallback_reason"] = "local_lightrag_unavailable"
+        return result
 
 
 class Handler(BaseHTTPRequestHandler):

@@ -1,0 +1,9 @@
+{
+  "startedAt": "2026-10-30T13:15:56.513Z",
+  "nativeExecution": false,
+  "bundlePlatform": "android",
+  "bundleHttpStatus": 200,
+  "bundleBytes": 8373298,
+  "result": "passed",
+  "finishedAt": "2026-10-30T13:16:08.315Z"
+}

@@ -1,0 +1,25 @@
+{
+  "startedAt": "2026-10-30T12:03:59.260Z",
+  "nativeExecution": false,
+  "bundlePlatform": "android",
+  "bundleHttpStatus": 200,
+  "bundleBytes": 8369118,
+  "result": "passed",
+  "finishedAt": "2026-10-30T12:04:16.710Z",
+  "environment": {
+    "host": "Linux x86_64",
+    "adbPath": "/tmp/saganexus-android/platform-tools/adb",
+    "adbVersion": "37.0.1-15733141",
+    "connectedAndroidDevices": 0,
+    "kvmDevicePresent": false,
+    "diskFreeAfterPreparation": "approximately 2.4 GiB",
+    "npmDownloadCacheCleaned": true,
+    "javaInstalled": false,
+    "androidSdkInstalled": false
+  },
+  "limitations": [
+    "Android JavaScript bundle generation only; no APK compilation or native execution",
+    "No Android device connected; emulator absent and /dev/kvm missing",
+    "ADB is installed in a temporary directory and may be removed by system cleanup"
+  ]
+}

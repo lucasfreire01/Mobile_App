@@ -60,7 +60,7 @@ export class GatewayEthernetConfigSchema extends BaseModel {
 }
 
 export class GatewayIpReservationSchema extends BaseModel {
-  static $columns = ['createdAt', 'id', 'managementIpAddress', 'networkId', 'status', 'token', 'updatedAt'] as const
+  static $columns = ['createdAt', 'id', 'managementIpAddress', 'networkId', 'status', 'token', 'updatedAt', 'vpnProvider'] as const
   $columns = GatewayIpReservationSchema.$columns
   @column.dateTime({ autoCreate: true })
   declare createdAt: DateTime
@@ -76,6 +76,21 @@ export class GatewayIpReservationSchema extends BaseModel {
   declare token: string
   @column.dateTime({ autoCreate: true, autoUpdate: true })
   declare updatedAt: DateTime
+  @column()
+  declare vpnProvider: string
+}
+
+export class GatewayMonitorStateSchema extends BaseModel {
+  static $columns = ['cursorId', 'leaseExpiresAt', 'leaseToken', 'name'] as const
+  $columns = GatewayMonitorStateSchema.$columns
+  @column()
+  declare cursorId: bigint | number
+  @column.dateTime()
+  declare leaseExpiresAt: DateTime | null
+  @column()
+  declare leaseToken: string | null
+  @column({ isPrimary: true })
+  declare name: string
 }
 
 export class GatewayNetworkOperationSchema extends BaseModel {
@@ -168,7 +183,7 @@ export class GatewaySshHostKeyRotationSchema extends BaseModel {
 }
 
 export class GatewaySchema extends BaseModel {
-  static $columns = ['ccConnectorId', 'ccIpServiceId', 'ccNetworkId', 'createdAt', 'gatewayEui', 'id', 'lastSeenAt', 'location', 'managementIpAddress', 'name', 'networkLockExpiresAt', 'networkLockToken', 'sshHostKeyFingerprint', 'status', 'updatedAt', 'wanIpAddress', 'wanIpObservedAt'] as const
+  static $columns = ['ccConnectorId', 'ccIpServiceId', 'ccNetworkId', 'createdAt', 'gatewayEui', 'id', 'lastSeenAt', 'location', 'managementIpAddress', 'name', 'networkLockExpiresAt', 'networkLockToken', 'sshHostKeyFingerprint', 'status', 'updatedAt', 'vpnProvider', 'vpnResources', 'wanIpAddress', 'wanIpObservedAt'] as const
   $columns = GatewaySchema.$columns
   @column()
   declare ccConnectorId: string | null
@@ -200,6 +215,10 @@ export class GatewaySchema extends BaseModel {
   declare status: string
   @column.dateTime({ autoCreate: true, autoUpdate: true })
   declare updatedAt: DateTime | null
+  @column()
+  declare vpnProvider: string
+  @column()
+  declare vpnResources: any | null
   @column()
   declare wanIpAddress: string | null
   @column.dateTime()

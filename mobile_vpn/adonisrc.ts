@@ -69,6 +69,7 @@ export default defineConfig({
   |
   */
   preloads: [
+    () => import('#start/vpn'),
     () => import('#start/routes'),
     () => import('#start/kernel'),
     () => import('#start/validator'),

@@ -1,5 +1,6 @@
 import Gateway from '#models/gateway'
-import CloudConnexaService from '#services/cloud_connexa_service'
+import { resolveVpnProvider, gatewayVpnResources } from '#services/vpn/registry'
+import type { VpnProvider } from '#services/vpn/types'
 import GatewaySshService from '#services/gateway_ssh_service'
 import { STATIC_ROLLBACK_TIMEOUT_SECONDS } from '#services/gateway_network_command_builder'
 import { Exception } from '@adonisjs/core/exceptions'
@@ -14,7 +15,11 @@ import {
 import logger from '@adonisjs/core/services/logger'
 
 const STATIC_ROLLBACK_RETRY_DELAY_SECONDS = STATIC_ROLLBACK_TIMEOUT_SECONDS + BACKOFF_BASE_SECONDS
-const NON_RETRYABLE_ERROR_CODES = new Set(['E_GATEWAY_SSH_HOST_KEY_MISMATCH'])
+const NON_RETRYABLE_ERROR_CODES = new Set([
+  'E_GATEWAY_SSH_HOST_KEY_MISMATCH',
+  'E_VPN_PROVIDER_NOT_CONFIGURED',
+  'E_VPN_PROVIDER_INVALID',
+])
 
 type GatewayNetworkConfigPayload = {
   mode: 'dhcp' | 'static'
@@ -41,7 +46,7 @@ export type GatewayNetworkConfigJobDependencies = {
     | 'waitForConnection'
     | 'getEthernetConfig'
   >
-  cloudConnexaService?: Pick<CloudConnexaService, 'updateIpServiceRoutes'>
+  vpnProvider?: Pick<VpnProvider, 'updateRoutes'>
 }
 
 function parseGatewayNetworkConfigPayload(payload: unknown): GatewayNetworkConfigPayload | null {
@@ -121,6 +126,9 @@ export default class GatewayNetworkConfigJob {
         })
       }
 
+      const vpnProvider =
+        this.dependencies.vpnProvider ?? (await resolveVpnProvider(gateway.vpnProvider))
+      const routeId = gatewayVpnResources(gateway).routeId
       const sshService = this.dependencies.gatewaySshService ?? new GatewaySshService()
       if (operation.previousPayload === null) {
         const config = await sshService.getEthernetConfig(gateway)
@@ -151,16 +159,12 @@ export default class GatewayNetworkConfigJob {
           // Install the local recovery profile before DHCP restarts. If DHCP
           // never obtains a lease, only the gateway itself can still recover.
           //
-          // CloudConnexa must know the fallback address before the device needs
+          // The VPN provider must know the fallback address before the device needs
           // it. After DHCP is unavailable, the backend cannot add a route via
           // the gateway itself anymore.
           const currentAddress = sshService.ensureConnectionAddress(gateway)
-          if (gateway.ccIpServiceId && currentAddress !== payload.staticIpAddress) {
-            const cloudConnexa = this.dependencies.cloudConnexaService ?? new CloudConnexaService()
-            await cloudConnexa.updateIpServiceRoutes(gateway.ccIpServiceId, [
-              currentAddress,
-              payload.staticIpAddress,
-            ])
+          if (routeId && currentAddress !== payload.staticIpAddress) {
+            await vpnProvider.updateRoutes(routeId, [currentAddress, payload.staticIpAddress])
           }
 
           await sshService.configureDhcpFallback(gateway, {
@@ -200,20 +204,16 @@ export default class GatewayNetworkConfigJob {
 
       const currentAddress = sshService.ensureConnectionAddress(gateway)
       const nextAddress = payload.staticIpAddress
-      const cloudConnexa = this.dependencies.cloudConnexaService ?? new CloudConnexaService()
 
       if (currentAddress !== nextAddress) {
-        if (!gateway.ccIpServiceId) {
-          throw new Exception('Gateway has no CloudConnexa IP service.', {
+        if (!routeId) {
+          throw new Exception('Gateway has no VPN route resource.', {
             status: 422,
             code: 'E_GATEWAY_NO_IP_SERVICE',
           })
         }
 
-        await cloudConnexa.updateIpServiceRoutes(gateway.ccIpServiceId, [
-          currentAddress,
-          nextAddress,
-        ])
+        await vpnProvider.updateRoutes(routeId, [currentAddress, nextAddress])
       }
 
       const rollbackToken = await sshService.armStaticRollback(gateway)
@@ -241,8 +241,8 @@ export default class GatewayNetworkConfigJob {
       gateway.lastSeenAt = DateTime.now()
       await gateway.save()
 
-      if (gateway.ccIpServiceId && currentAddress !== nextAddress) {
-        await cloudConnexa.updateIpServiceRoutes(gateway.ccIpServiceId, [nextAddress])
+      if (routeId && currentAddress !== nextAddress) {
+        await vpnProvider.updateRoutes(routeId, [nextAddress])
       }
 
       await this.markOperationAsApplied(operation)

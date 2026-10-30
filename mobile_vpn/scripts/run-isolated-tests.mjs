@@ -102,6 +102,7 @@ try {
     SAGANEXUS_TEST_RUN_ID: runId,
     SESSION_DRIVER: 'memory',
     LIMITER_STORE: 'memory',
+    VPN_PROVIDER: 'cloudconnexa',
     BROWAN_SSH_KEY_PATH: resolve(root, 'tmp', `nonexistent-test-key-${runId}`),
     BROWAN_SSH_USERNAME: 'test',
     BROWAN_SSH_PORT: '9',

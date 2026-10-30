@@ -13,8 +13,22 @@ export default class CloudConnexaService {
   // Shared across instances: token is valid for ~12h
   private static token: TokenCache | null = null
 
+  ensureConfigured() {
+    if (
+      !env.get('CLOUDCONNEXA_BASE_URL') ||
+      !env.get('CLOUDCONNEXA_CLIENT_ID') ||
+      !env.get('CLOUDCONNEXA_CLIENT_SECRET')
+    ) {
+      throw new Exception('CloudConnexa provider credentials are not configured.', {
+        status: 503,
+        code: 'E_VPN_PROVIDER_NOT_CONFIGURED',
+      })
+    }
+  }
+
   private get baseUrl() {
-    return env.get('CLOUDCONNEXA_BASE_URL').replace(/\/$/, '')
+    this.ensureConfigured()
+    return env.get('CLOUDCONNEXA_BASE_URL')!.replace(/\/$/, '')
   }
 
   private async getToken(): Promise<string> {
@@ -22,7 +36,7 @@ export default class CloudConnexaService {
     if (cached && cached.expiresAt > Date.now() + 60_000) return cached.value
 
     const basic = Buffer.from(
-      `${env.get('CLOUDCONNEXA_CLIENT_ID')}:${env.get('CLOUDCONNEXA_CLIENT_SECRET').release()}`
+      `${env.get('CLOUDCONNEXA_CLIENT_ID')}:${env.get('CLOUDCONNEXA_CLIENT_SECRET')!.release()}`
     ).toString('base64')
 
     const res = await fetch(`${this.baseUrl}/api/v1/oauth/token?grant_type=client_credentials`, {

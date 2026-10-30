@@ -77,3 +77,7 @@ local após conferir ausência de duplicatas. Não foram provisionados ou removi
 recursos reais da CloudConnexa, nem aplicadas configurações nos gateways.
 
 Evidência local: [verificação da migração e permissões](gateway-ip-reservations-verification.json).
+
+## Provedores substituíveis — 2026-10-30
+
+Provisionamento e compensação usam `VpnProvider`. Cada reserva armazena `vpn_provider`; uma limpeza pendente resolve o provedor gravado, independentemente do padrão atual. O callback de criação deve ser aguardado pelo adaptador. Rejeição definitiva usa `VpnProvisioningRejectedError`; falhas ambíguas mantêm a reserva. Campos privados extras retornados pelo adaptador não são persistidos no gateway. CloudConnexa continua como adaptador padrão. Ver [provedores VPN](vpn-providers.md).

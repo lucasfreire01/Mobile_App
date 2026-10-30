@@ -41,6 +41,22 @@ test('runtime permits application DML and rejects schema/account administration'
       [gatewayId, `runtime-probe-${tag}`]
     )
     await client.query("UPDATE gateways SET status = 'online' WHERE id = $1", [gatewayId])
+    await client.query('UPDATE gateways SET vpn_provider = $1, vpn_resources = $2 WHERE id = $3', [
+      'runtime-permission-fixture',
+      JSON.stringify({
+        networkId: 'fixture-network',
+        connectorId: 'fixture-connector',
+        routeId: 'fixture-route',
+      }),
+      gatewayId,
+    ])
+    const binding = (
+      await client.query('SELECT vpn_provider, vpn_resources FROM gateways WHERE id = $1', [
+        gatewayId,
+      ])
+    ).rows[0]
+    assert.equal(binding.vpn_provider, 'runtime-permission-fixture')
+    assert.equal(binding.vpn_resources.routeId, 'fixture-route')
     await client.query(
       "INSERT INTO gateway_ethernet_configs (id, gateway_id, mode, dhcp_fallback_enabled, created_at, updated_at) VALUES ($1, $2, 'dhcp', false, now(), now())",
       [gatewayId, gatewayId]
@@ -78,6 +94,25 @@ test('runtime permits application DML and rejects schema/account administration'
     )
     await client.query('DELETE FROM rate_limits WHERE key = $1', [tag])
     await client.query('DELETE FROM gateways WHERE id = $1', [gatewayId])
+    const monitorName = `runtime-probe-${tag}`
+    await client.query(
+      "INSERT INTO gateway_monitor_states (name, lease_token, lease_expires_at, cursor_id) VALUES ($1, $2, clock_timestamp() + interval '1 minute', 0)",
+      [monitorName, randomUUID()]
+    )
+    await client.query(
+      'UPDATE gateway_monitor_states SET cursor_id = 1, lease_token = NULL, lease_expires_at = NULL WHERE name = $1',
+      [monitorName]
+    )
+    assert.equal(
+      Number(
+        (
+          await client.query('SELECT cursor_id FROM gateway_monitor_states WHERE name = $1', [
+            monitorName,
+          ])
+        ).rows[0].cursor_id
+      ),
+      1
+    )
     await client.query('ROLLBACK')
     assert.equal(
       (await client.query('SELECT id FROM gateways WHERE id = $1', [gatewayId])).rowCount,
