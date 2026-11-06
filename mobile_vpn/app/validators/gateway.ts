@@ -34,3 +34,7 @@ export const rotateGatewaySshHostKeyValidator = vine.create({
     .regex(/^SHA256:[A-Za-z0-9+/]+={0,2}$/),
   reason: vine.string().trim().minLength(3).maxLength(500),
 })
+
+export const gatewayEnrollmentCodeValidator = vine.create({
+  code: vine.string().regex(/^[A-Za-z0-9_-]{43}$/),
+})

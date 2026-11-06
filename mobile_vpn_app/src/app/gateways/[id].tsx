@@ -1,3 +1,4 @@
+import { useActiveRefresh } from "../../lib/use-active-refresh";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Pressable,
@@ -63,6 +64,18 @@ type EthernetDraft = {
   secondaryDns: string;
 };
 
+function createEmptyEthernetDraft(): EthernetDraft {
+  return {
+    mode: "dhcp",
+    dhcpFallbackEnabled: false,
+    staticIpAddress: "",
+    staticPrefixLength: "24",
+    staticGateway: "",
+    primaryDns: "",
+    secondaryDns: "",
+  };
+}
+
 function toEthernetDraft(config: EthernetConfig): EthernetDraft {
   return {
     mode: config.mode,
@@ -104,12 +117,21 @@ export default function GatewayDetailsScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { token, apiFetch, isRestoring } = useAuth();
   const fetching = useRef(false);
+  const gatewayMutation = useRef(false);
+  const [editingName, setEditingName] = useState(false);
+  const [nameDraft, setNameDraft] = useState("");
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [deleteName, setDeleteName] = useState("");
+  const [gatewayAction, setGatewayAction] = useState<"rename" | "delete" | null>(null);
+  const [gatewayActionError, setGatewayActionError] = useState<string | null>(null);
+  const [gatewayActionMessage, setGatewayActionMessage] = useState<string | null>(null);
+
   const [gateway, setGateway] = useState<Gateway | null>(null);
   const [ethernetConfig, setEthernetConfig] = useState<EthernetConfig | null>(
     null,
   );
   const [ethernetDraft, setEthernetDraft] = useState<EthernetDraft | null>(
-    null,
+    createEmptyEthernetDraft,
   );
   const [operation, setOperation] = useState<NetworkOperation | null>(null);
   const [alerts, setAlerts] = useState<SecurityAlert[]>([]);
@@ -167,9 +189,9 @@ export default function GatewayDetailsScreen() {
         setGateway(gatewayBody.gateway);
         setEthernetConfig(savedEthernetConfig);
         setEthernetDraft(
-          (currentDraft) =>
-            currentDraft ??
-            (savedEthernetConfig ? toEthernetDraft(savedEthernetConfig) : null),
+          savedEthernetConfig
+            ? toEthernetDraft(savedEthernetConfig)
+            : createEmptyEthernetDraft(),
         );
         setOperation(operationsBody.operations?.[0] ?? null);
         setAlerts(alertsBody.alerts ?? []);
@@ -187,9 +209,7 @@ export default function GatewayDetailsScreen() {
     [apiFetch, id, isRestoring, token],
   );
 
-  useEffect(() => {
-    void Promise.resolve().then(() => loadGateway());
-  }, [loadGateway]);
+  useActiveRefresh(loadGateway);
 
   useEffect(() => {
     if (
@@ -203,6 +223,44 @@ export default function GatewayDetailsScreen() {
     const interval = setInterval(() => void loadGateway(false), 5_000);
     return () => clearInterval(interval);
   }, [error, loadGateway, operation]);
+
+  async function mutateGateway(action: "rename" | "delete") {
+    if (!gateway || !token || gatewayMutation.current) return;
+    const name = nameDraft.trim();
+    if (action === "rename" && (!name || name.length > 100 || name === gateway.name)) return;
+    if (action === "delete" && (!confirmingDelete || deleteName !== gateway.name || operationInProgress)) return;
+    gatewayMutation.current = true;
+    setGatewayAction(action);
+    setGatewayActionError(null);
+    setGatewayActionMessage(null);
+    try {
+      const response = await apiFetch(`${getApiUrl()}/gateways/${gateway.id}`, {
+        method: action === "rename" ? "PATCH" : "DELETE",
+        ...(action === "rename" ? {
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name }),
+        } : {}),
+      });
+      const body = await response.json().catch(() => null);
+      if (!response.ok) {
+        throw new Error(body?.errors?.[0]?.message ?? body?.message ??
+          (action === "rename" ? "Não foi possível atualizar o nome." : "Não foi possível excluir o gateway."));
+      }
+      if (action === "delete") {
+        router.replace("/gateways");
+        return;
+      }
+      if (!body?.gateway) throw new Error("Resposta inválida ao atualizar o gateway.");
+      setGateway(body.gateway);
+      setEditingName(false);
+      setGatewayActionMessage("Nome atualizado.");
+    } catch (actionError) {
+      setGatewayActionError(actionError instanceof Error ? actionError.message : "Não foi possível concluir a ação.");
+    } finally {
+      gatewayMutation.current = false;
+      setGatewayAction(null);
+    }
+  }
 
   async function applyEthernetConfiguration() {
     if (!token || !id || !ethernetConfig) {
@@ -419,6 +477,40 @@ export default function GatewayDetailsScreen() {
             <Text className="text-sm leading-6 text-slate-600">
               Última vez online: {formatDate(gateway.lastSeenAt)}
             </Text>
+          </View>
+        ) : null}
+
+        {gateway ? (
+          <View className="gap-4 border-b border-[#cddbd5] bg-canvas py-6">
+            <Text accessibilityRole="header" className="text-xl font-bold text-slate-900">Gerenciar gateway</Text>
+            {gatewayActionError ? <Text accessibilityRole="alert" className="text-sm text-red-800">{gatewayActionError}</Text> : null}
+            {gatewayActionMessage ? <Text accessibilityLiveRegion="polite" className="text-sm text-brand-green">{gatewayActionMessage}</Text> : null}
+            {editingName ? (
+              <View className="gap-3">
+                <Text className="text-sm font-semibold text-slate-900">Nome do gateway</Text>
+                <TextInput accessibilityLabel="Nome do gateway" value={nameDraft} onChangeText={setNameDraft} maxLength={100} editable={!gatewayAction} className="min-h-12 rounded-lg border border-slate-300 bg-white px-4 text-base text-slate-900" />
+                <View className="flex-row flex-wrap gap-3">
+                  <Pressable accessibilityRole="button" disabled={!!gatewayAction || !nameDraft.trim() || nameDraft.trim() === gateway.name} onPress={() => void mutateGateway("rename")} className="min-h-12 justify-center rounded-lg bg-brand-green px-5 disabled:opacity-40"><Text className="font-semibold text-white">{gatewayAction === "rename" ? "Salvando…" : "Salvar nome"}</Text></Pressable>
+                  <Pressable accessibilityRole="button" disabled={!!gatewayAction} onPress={() => setEditingName(false)} className="min-h-12 justify-center px-4"><Text className="font-semibold text-slate-700">Cancelar</Text></Pressable>
+                </View>
+              </View>
+            ) : (
+              <Pressable accessibilityRole="button" disabled={!!gatewayAction} onPress={() => { setNameDraft(gateway.name); setEditingName(true); setConfirmingDelete(false); setGatewayActionError(null); setGatewayActionMessage(null); }} className="min-h-12 self-start justify-center rounded-lg border border-slate-300 px-5"><Text className="font-semibold text-slate-900">Editar nome</Text></Pressable>
+            )}
+            {confirmingDelete ? (
+              <View className="gap-3 rounded-lg border border-red-200 bg-red-50 p-4">
+                <Text className="text-base font-bold text-red-900">Excluir {gateway.name}?</Text>
+                <Text className="text-sm leading-6 text-red-900">Esta ação remove o cadastro e o recurso VPN do gateway. O equipamento perderá essa conexão. Para confirmar, digite o nome exatamente como aparece acima.</Text>
+                <TextInput accessibilityLabel="Nome do gateway para confirmar exclusão" value={deleteName} onChangeText={setDeleteName} editable={!gatewayAction} autoCapitalize="none" autoCorrect={false} className="min-h-12 rounded-lg border border-red-300 bg-white px-4 text-base text-slate-900" />
+                <View className="flex-row flex-wrap gap-3">
+                  <Pressable accessibilityRole="button" disabled={!!gatewayAction || deleteName !== gateway.name || operationInProgress} onPress={() => void mutateGateway("delete")} className="min-h-12 justify-center rounded-lg bg-red-700 px-5 disabled:opacity-40"><Text className="font-semibold text-white">{gatewayAction === "delete" ? "Excluindo…" : "Confirmar exclusão"}</Text></Pressable>
+                  <Pressable accessibilityRole="button" disabled={!!gatewayAction} onPress={() => { setConfirmingDelete(false); setDeleteName(""); }} className="min-h-12 justify-center px-4"><Text className="font-semibold text-red-900">Cancelar</Text></Pressable>
+                </View>
+              </View>
+            ) : (
+              <Pressable accessibilityRole="button" disabled={!!gatewayAction || operationInProgress} onPress={() => { setConfirmingDelete(true); setDeleteName(""); setEditingName(false); setGatewayActionError(null); setGatewayActionMessage(null); }} className="min-h-12 self-start justify-center px-1 disabled:opacity-40"><Text className="font-semibold text-red-700">Excluir gateway</Text></Pressable>
+            )}
+            {operationInProgress ? <Text className="text-sm text-slate-600">Aguarde a operação de rede terminar para excluir o gateway.</Text> : null}
           </View>
         ) : null}
 

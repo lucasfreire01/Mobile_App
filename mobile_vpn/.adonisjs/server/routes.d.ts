@@ -5,6 +5,8 @@ type ParamValue = string | number | bigint | boolean
 export type ScannedRoutes = {
   ALL: {
     'health.show': { paramsTuple?: []; params?: {} }
+    'gateways.enroll': { paramsTuple?: []; params?: {} }
+    'gateways.complete_enrollment': { paramsTuple?: []; params?: {} }
     'auth.access_tokens.store': { paramsTuple?: []; params?: {} }
     'profile.profile.show': { paramsTuple?: []; params?: {} }
     'profile.access_tokens.destroy': { paramsTuple?: []; params?: {} }
@@ -59,6 +61,8 @@ export type ScannedRoutes = {
     'queue_healths.show': { paramsTuple?: []; params?: {} }
   }
   POST: {
+    'gateways.enroll': { paramsTuple?: []; params?: {} }
+    'gateways.complete_enrollment': { paramsTuple?: []; params?: {} }
     'auth.access_tokens.store': { paramsTuple?: []; params?: {} }
     'profile.access_tokens.destroy': { paramsTuple?: []; params?: {} }
     'gateways.store': { paramsTuple?: []; params?: {} }

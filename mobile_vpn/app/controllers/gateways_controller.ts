@@ -7,10 +7,15 @@ import GatewayProvisioningService, {
   managementIpConflict,
   rethrowManagementIpConflict,
 } from '#services/gateway_provisioning_service'
-import { createGatewayValidator, updateGatewayValidator } from '#validators/gateway'
+import {
+  createGatewayValidator,
+  gatewayEnrollmentCodeValidator,
+  updateGatewayValidator,
+} from '#validators/gateway'
 import { Exception } from '@adonisjs/core/exceptions'
 import type { HttpContext } from '@adonisjs/core/http'
 import { ensureAllowedSshAddress } from '#services/gateway_ssh_address_policy'
+import { createHash } from 'node:crypto'
 
 const DEFAULT_NETWORK_OPERATIONS_LIMIT = 20
 const MAX_NETWORK_OPERATIONS_LIMIT = 100
@@ -84,8 +89,93 @@ export default class GatewaysController {
    */
   async store({ request, response }: HttpContext) {
     const payload = await request.validateUsing(createGatewayValidator)
-    const gateway = await new GatewayProvisioningService().create(payload)
-    return response.created({ message: 'gateway created', gateway })
+    const { gateway, enrollmentCode } =
+      await new GatewayProvisioningService().createWithEnrollmentCode(payload)
+    response.header('Cache-Control', 'no-store')
+    return response.created({ message: 'gateway created', gateway, enrollmentCode })
+  }
+
+  /** Bootstrap agents redeem the temporary code and pull their VPN configuration. */
+  async enroll({ request, response }: HttpContext) {
+    const { code } = await request.validateUsing(gatewayEnrollmentCodeValidator)
+    const tokenHash = createHash('sha256').update(code).digest('hex')
+    const enrollment = await db
+      .from('gateway_enrollments')
+      .where('token_hash', tokenHash)
+      .whereNull('claimed_at')
+      .where('expires_at', '>', new Date())
+      .first()
+
+    if (!enrollment) {
+      throw new Exception('Enrollment code is invalid, expired, or already used.', {
+        status: 404,
+        code: 'E_GATEWAY_ENROLLMENT_CODE_INVALID',
+      })
+    }
+
+    const gateway = await Gateway.findOrFail(enrollment.gateway_id)
+    const connectorId = gatewayVpnResources(gateway).connectorId
+    if (!connectorId) {
+      throw new Exception('Gateway has no VPN connector', {
+        status: 404,
+        code: 'E_GATEWAY_NO_CONNECTOR',
+      })
+    }
+    const provider = await resolveVpnProvider(gateway.vpnProvider)
+    const profile = await provider.getProfile(connectorId)
+    if (
+      !profile ||
+      typeof profile.content !== 'string' ||
+      !['openvpn', 'wireguard'].includes(profile.format)
+    ) {
+      throw new Exception('VPN provider returned an unsupported profile.', {
+        status: 502,
+        code: 'E_VPN_PROFILE_INVALID',
+      })
+    }
+
+    response.header('Cache-Control', 'no-store')
+    return response.ok({
+      gateway: { id: gateway.id, managementIpAddress: gateway.managementIpAddress },
+      vpn: {
+        provider: gateway.vpnProvider,
+        format: profile.format,
+        contentBase64: Buffer.from(profile.content, 'utf8').toString('base64'),
+      },
+    })
+  }
+
+  /** The agent acknowledges only after saving and activating the downloaded profile. */
+  async completeEnrollment({ request, response }: HttpContext) {
+    const { code } = await request.validateUsing(gatewayEnrollmentCodeValidator)
+    const tokenHash = createHash('sha256').update(code).digest('hex')
+    const enrollment = await db
+      .from('gateway_enrollments')
+      .where('token_hash', tokenHash)
+      .whereNull('claimed_at')
+      .where('expires_at', '>', new Date())
+      .first()
+
+    if (!enrollment) {
+      throw new Exception('Enrollment code is invalid, expired, or already used.', {
+        status: 404,
+        code: 'E_GATEWAY_ENROLLMENT_CODE_INVALID',
+      })
+    }
+
+    const updated = await db
+      .from('gateway_enrollments')
+      .where('id', enrollment.id)
+      .whereNull('claimed_at')
+      .update({ claimed_at: new Date(), updated_at: new Date() })
+    if (!updated) {
+      throw new Exception('Enrollment code has already been used.', {
+        status: 409,
+        code: 'E_GATEWAY_ENROLLMENT_CODE_USED',
+      })
+    }
+
+    return response.noContent()
   }
 
   /**

@@ -44,7 +44,7 @@ fi
 SSH_USER="${BROWAN_SSH_USERNAME:-root}"
 SSH_PORT="${BROWAN_SSH_PORT:-22}"
 SSH_KEY="${BROWAN_SSH_KEY_PATH:-}"
-SSH_OPTS="-o StrictHostKeyChecking=no -o ConnectTimeout=10"
+SSH_OPTS="-o StrictHostKeyChecking=yes -o BatchMode=yes -o ConnectTimeout=10"
 [[ -n "$SSH_KEY" ]] && SSH_OPTS="$SSH_OPTS -i $SSH_KEY"
 
 ssh_run() { ssh $SSH_OPTS -p "$SSH_PORT" "${SSH_USER}@${GATEWAY_LOCAL_IP}" "$@"; }
@@ -66,7 +66,87 @@ OVPN=$(curl -sf "$BACKEND_URL/api/v1/gateways/$GATEWAY_ID/vpn-profile" \
   -H "Authorization: Bearer $TOKEN")
 
 echo "▶ Installing /etc/openvpn/client.conf on gateway..."
-echo "$OVPN" | ssh $SSH_OPTS -p "$SSH_PORT" "${SSH_USER}@${GATEWAY_LOCAL_IP}" "cat > /etc/openvpn/client.conf"
+
+# Select the underlay family, independently of the VPN management address.
+# auto uses usable default routes outside tun/tap; unknown or dual keeps both.
+# Explicit modes: BROWAN_VPN_IP_FAMILY=4|6|dual. Legacy opt-in remains supported.
+detect_vpn_ip_family() {
+  ssh_run 'v4=0; v6=0
+for family in 4 6; do
+  routes=$(ip -$family route show default) || exit 1
+  if printf "%s\n" "$routes" | awk '\''$1 == "default" && $0 !~ /(^| )(unreachable|blackhole|prohibit|linkdown)( |$)/ { for (i=1;i<NF;i++) if ($i=="dev" && $(i+1) !~ /^(tun|tap|lo)/) found=1 } END { exit !found }'\''; then
+    case "$family" in 4) v4=1;; 6) v6=1;; esac
+  fi
+done
+case "$v4$v6" in 10) echo 4;; 01) echo 6;; *) echo dual;; esac'
+}
+rewrite_vpn_ip_family() {
+  local family="$1"
+  awk -v family="$family" '
+    function transport(p) {
+      if (p ~ /^udp[46]?$/) return "udp" (family == "dual" ? "" : family)
+      if (p ~ /^tcp[46]?(-client)?$/) {
+        suffix = p ~ /-client$/ ? "-client" : ""
+        return "tcp" (family == "dual" ? "" : family) suffix
+      }
+      return p
+    }
+    $1 == "remote" && NF >= 4 { $4 = transport($4) }
+    $1 == "proto" && NF >= 2 { $2 = transport($2) }
+    { print }
+  '
+}
+select_vpn_ip_family() {
+  local mode="${BROWAN_VPN_IP_FAMILY:-auto}"
+  if [[ -z "${BROWAN_VPN_IP_FAMILY:-}" && "${BROWAN_VPN_IPV4_ONLY:-0}" == 1 ]]; then
+    mode=4
+  fi
+  case "$mode" in
+    auto) detect_vpn_ip_family;;
+    4|6|dual) printf '%s\n' "$mode";;
+    *) echo "Invalid BROWAN_VPN_IP_FAMILY: expected auto, 4, 6 or dual" >&2; return 1;;
+  esac
+}
+VPN_IP_FAMILY=$(select_vpn_ip_family)
+OVPN=$(printf '%s\n' "$OVPN" | rewrite_vpn_ip_family "$VPN_IP_FAMILY")
+echo "VPN transport IP family: $VPN_IP_FAMILY"
+
+# Keep recovery state on the device; a failed local run restores it over LAN.
+[[ "$MGMT_IP" =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]] || { echo "Invalid management IP" >&2; exit 1; }
+[[ "$OVPN" == *'<cert>'* && "$OVPN" == *'<key>'* ]] || { echo "Invalid VPN profile" >&2; exit 1; }
+RECOVERY_DIR="/etc/openvpn/.provision-recovery"
+TRANSACTION_STARTED=0
+finish_provisioning() {
+  local result=$?
+  trap - EXIT
+  if [[ "$TRANSACTION_STARTED" == 1 ]]; then
+    if [[ "$result" == 0 ]]; then
+      # Require actual VPN reachability, not merely an existing tun interface.
+      if ! ssh $SSH_OPTS -p "$SSH_PORT" "${SSH_USER}@${MGMT_IP}" true; then
+        echo "VPN management SSH verification failed" >&2
+        result=1
+      fi
+    fi
+    if [[ "$result" != 0 ]]; then
+      if ! ssh_run 'for f in /etc/openvpn/client.conf /etc/init.d/S92mgmtip /etc/crontabs/root /etc/config/vpn; do name=$(echo "$f" | tr / _); if test -f /etc/openvpn/.provision-recovery/$name; then cp -p /etc/openvpn/.provision-recovery/$name "$f" || exit 1; elif test -f /etc/openvpn/.provision-recovery/$name.absent; then rm -f "$f" || exit 1; fi; done; /etc/init.d/S90openvpn restart'; then
+        echo "ROLLBACK FAILED: recovery files preserved in $RECOVERY_DIR; use LAN access" >&2
+        exit 1
+      fi
+      echo "Provisioning failed; previous files restored and OpenVPN restarted" >&2
+    fi
+    if ! ssh_run 'rm -rf /etc/openvpn/.provision-recovery'; then
+      echo "Recovery cleanup failed; inspect device before retrying" >&2
+      exit 1
+    fi
+  fi
+  exit "$result"
+}
+# mkdir is also a lock: never overwrite recovery data from another run.
+ssh_run 'umask 077; mkdir /etc/openvpn/.provision-recovery' || exit 1
+TRANSACTION_STARTED=1
+trap finish_provisioning EXIT
+ssh_run 'for f in /etc/openvpn/client.conf /etc/init.d/S92mgmtip /etc/crontabs/root /etc/config/vpn; do name=$(echo "$f" | tr / _); if test -f "$f"; then cp -p "$f" /etc/openvpn/.provision-recovery/$name || exit 1; else touch /etc/openvpn/.provision-recovery/$name.absent || exit 1; fi; done'
+echo "$OVPN" | ssh $SSH_OPTS -p "$SSH_PORT" "${SSH_USER}@${GATEWAY_LOCAL_IP}" "umask 077; cat > /etc/openvpn/.client.conf.pending && mv /etc/openvpn/.client.conf.pending /etc/openvpn/client.conf"
 echo "  Done."
 
 # ── 2. Enable VPN via uci ─────────────────────────────────────────────────────
@@ -79,6 +159,7 @@ MGMT_SCRIPT="#!/bin/sh
 MGMT_IP=\"${MGMT_IP}/32\"
 case \"\$1\" in
   start|restart|\"\")
+    ip route replace 100.96.0.0/11 via 100.96.1.49 dev tun0 2>/dev/null || true
     ip addr show dev lo | grep -q \"\${MGMT_IP%/*}\" || ip addr add \"\$MGMT_IP\" dev lo
     ;;
   stop)
@@ -99,7 +180,7 @@ ssh_run "/etc/init.d/S92mgmtip start"
 
 # ── 6. Restart OpenVPN ────────────────────────────────────────────────────────
 echo "▶ Restarting OpenVPN..."
-ssh_run "/etc/init.d/S90openvpn restart" || true
+ssh_run "/etc/init.d/S90openvpn restart"
 
 # ── 7. Wait for tun0 ──────────────────────────────────────────────────────────
 echo "▶ Waiting for VPN tunnel (tun0)..."
@@ -119,6 +200,9 @@ if [[ -z "$TUN_IP" ]]; then
   echo "    Check: ssh ${SSH_USER}@${GATEWAY_LOCAL_IP} 'cat /app/log/openvpn/openvpn.client.log'"
   exit 1
 fi
+
+# Reapply tunnel routes after OpenVPN creates tun0.
+ssh_run "/etc/init.d/S92mgmtip start"
 
 # ── Done ──────────────────────────────────────────────────────────────────────
 echo ""

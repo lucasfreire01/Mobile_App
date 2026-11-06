@@ -19,8 +19,11 @@ export type VpnProviderFactory = () => VpnProvider | Promise<VpnProvider>
 
 /** Only explicit, definitive rejections allow releasing an IP before a resource ID is known. */
 export class VpnProvisioningRejectedError extends Exception {
-  constructor() {
-    super('VPN provider rejected provisioning without creating resources.', {
+  constructor(details?: { method?: string; path?: string; status?: number }) {
+    const context = details?.method && details.path && details.status
+      ? ` CloudConnexa ${details.method} ${details.path} returned HTTP ${details.status}.`
+      : ''
+    super(`VPN provider rejected provisioning without creating resources.${context}`, {
       status: 502,
       code: 'E_VPN_PROVISIONING_REJECTED',
     })

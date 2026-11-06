@@ -34,3 +34,13 @@ Ver [[Paginacao-2026-10-30]]: páginas de 20 com Anterior/Próxima; busca/filtro
 ## Patches de dependências em 2026-10-30
 
 Expo 58.0.21, constants 58.0.14, linking 58.0.15, router 58.0.28 e React Native 0.88.1; compatibilidade online, lint/TypeScript, web real e bundle Android aprovados. Advisories de tooling persistem; ver [[Dependencias-2026-10-30]].
+
+- 2026-11-05: atualização automática compartilhada via src/lib/use-active-refresh.ts, aplicada à lista e detalhes dos gateways. Consulta ao focar tela e ao voltar ao primeiro plano; listener removido ao sair; cancelamento existente da lista preservado. Teste isolado de ciclo de vida passou. Histórico de operações e distribuição do APK permanecem pendentes; nenhum APK instalado foi atualizado nesta etapa.
+
+- 2026-11-05: controles de editar nome (PATCH) e excluir gateway (DELETE) adicionados à tela de detalhes usando endpoints administrativos existentes. Exclusão exige nome exato e avisa remoção VPN; bloqueada no cliente durante operação de rede. Sem exclusão real, sem novo APK. Verificação visual e revisão completa da criação de gateways ainda pendentes. Direção visual preservada: utilitário operacional, divisores e tokens existentes, confirmação de risco inline.
+
+- 2026-11-05: teste Chrome headless com API local simulada validou login, detalhes, renomeação PATCH, bloqueio por nome incorreto, cancelamento sem DELETE, erro503 preservando gateway e retry DELETE204 retornando lista. Capturas /tmp/gateway-desktop.png e /tmp/gateway-mobile.png, sem overflow mobile. Cadastro backend: 9 testes de provisionamento isolados aprovados, banco e papel temporários removidos. Sem mutações em recursos VPN reais.
+
+- 2026-11-05: capturas /tmp/gateway-desktop.png (1365x900) e /tmp/gateway-mobile.png (390x844) inspecionadas visualmente. Marca/cabeçalho preservados; título e textos legíveis; controles editar/excluir visíveis; alvos de toque com altura adequada; alinhamento, espaçamento e separadores coerentes; sem corte horizontal no mobile. Capturas mostram estado após renomeação com confirmação de exclusão recolhida; confirmação/erro/exclusão verificados funcionalmente no navegador na etapa anterior. Nenhuma alteração de produto nesta conferência; APK novo continua não gerado.
+
+- 2026-11-05: login redesenhado em azul profundo, marca oficial, grafismo de conexão e formulário claro. KeyboardAvoidingView padding iOS/height Android; Android softwareKeyboardLayoutMode=resize; cabeçalho compacto no teclado; foco senha e mudança de layout rolam ao fim. Browser simulado validou login, alternância de senha e foco E-mail→Senha; campo senha visível em viewport390x420; screenshots /tmp/login-desktop.png e /tmp/login-mobile.png. Teclado Android físico e APK novo pendentes.

@@ -19,6 +19,30 @@ export interface Registry {
       errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#controllers/health_controller').default['show']>>>
     }
   }
+  'gateways.enroll': {
+    methods: ["POST"]
+    pattern: '/api/v1/gateways/enrollment/claim'
+    types: {
+      body: ExtractBody<InferInput<(typeof import('#validators/gateway').gatewayEnrollmentCodeValidator)>>
+      paramsTuple: []
+      params: {}
+      query: ExtractQuery<InferInput<(typeof import('#validators/gateway').gatewayEnrollmentCodeValidator)>>
+      response: ExtractResponse<Awaited<ReturnType<import('#controllers/gateways_controller').default['enroll']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#controllers/gateways_controller').default['enroll']>>> | { status: 422; response: { errors: SimpleError[] } }
+    }
+  }
+  'gateways.complete_enrollment': {
+    methods: ["POST"]
+    pattern: '/api/v1/gateways/enrollment/complete'
+    types: {
+      body: ExtractBody<InferInput<(typeof import('#validators/gateway').gatewayEnrollmentCodeValidator)>>
+      paramsTuple: []
+      params: {}
+      query: ExtractQuery<InferInput<(typeof import('#validators/gateway').gatewayEnrollmentCodeValidator)>>
+      response: ExtractResponse<Awaited<ReturnType<import('#controllers/gateways_controller').default['completeEnrollment']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#controllers/gateways_controller').default['completeEnrollment']>>> | { status: 422; response: { errors: SimpleError[] } }
+    }
+  }
   'auth.access_tokens.store': {
     methods: ["POST"]
     pattern: '/api/v1/auth/login'

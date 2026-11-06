@@ -10,6 +10,11 @@ router.get('/health', [controllers.Health, 'show'])
 
 router
   .group(() => {
+    router.post('gateways/enrollment/claim', [controllers.Gateways, 'enroll']).use(loginThrottle)
+    router
+      .post('gateways/enrollment/complete', [controllers.Gateways, 'completeEnrollment'])
+      .use(loginThrottle)
+
     router
       .group(() => {
         router.post('login', [controllers.AccessTokens, 'store']).use(loginThrottle)

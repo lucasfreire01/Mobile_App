@@ -18,6 +18,7 @@ export const tablePrivileges = {
   auth_access_tokens: ['SELECT', 'INSERT', 'UPDATE', 'DELETE'],
   gateways: ['SELECT', 'INSERT', 'UPDATE', 'DELETE'],
   gateway_ip_reservations: ['SELECT', 'INSERT', 'UPDATE', 'DELETE'],
+  gateway_enrollments: ['SELECT', 'INSERT', 'UPDATE'],
   gateway_monitor_states: ['SELECT', 'INSERT', 'UPDATE'],
   gateway_ethernet_configs: ['SELECT', 'INSERT', 'UPDATE'],
   gateway_network_operations: ['SELECT', 'INSERT', 'UPDATE'],

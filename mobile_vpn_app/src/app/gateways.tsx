@@ -1,3 +1,4 @@
+import { useActiveRefresh } from "../lib/use-active-refresh";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   FlatList,
@@ -121,10 +122,8 @@ export default function GatewaysScreen() {
     }
   }, [apiFetch, isRestoring, token, listRequest]);
 
-  useEffect(() => {
-    void Promise.resolve().then(loadGateways);
-    return () => activeRequest.current?.abort();
-  }, [loadGateways]);
+  const cancelLoad = useCallback(() => activeRequest.current?.abort(), []);
+  useActiveRefresh(loadGateways, cancelLoad);
 
   async function handleLogout() {
     await logout();

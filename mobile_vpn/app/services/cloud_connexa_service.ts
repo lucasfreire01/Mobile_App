@@ -44,7 +44,7 @@ export default class CloudConnexaService {
       method: 'POST',
       headers: { Authorization: `Basic ${basic}` },
     })
-    if (!res.ok) throw this.error('CloudConnexa authentication failed', res.status)
+    if (!res.ok) throw this.error('POST', '/api/v1/oauth/token', res.status)
 
     const data = (await res.json()) as { access_token: string; expires_in: number }
     CloudConnexaService.token = {
@@ -72,15 +72,20 @@ export default class CloudConnexaService {
 
     if (method === 'DELETE' && res.status === 404) return undefined as T
     if (!res.ok) {
-      const detail = await res.text().catch(() => '')
-      throw this.error(`CloudConnexa ${method} ${path} failed: ${detail.slice(0, 300)}`, res.status)
+      await res.body?.cancel().catch(() => undefined)
+      throw this.error(method, path, res.status)
     }
     if (res.status === 204) return undefined as T
     return (asText ? await res.text() : await res.json()) as T
   }
 
-  private error(message: string, upstreamStatus: number) {
-    return new Exception(message, { status: 502, code: `E_CLOUDCONNEXA_${upstreamStatus}` })
+  private error(method: string, path: string, upstreamStatus: number) {
+    const error = new Exception(`CloudConnexa ${method} ${path} rejected the request (HTTP ${upstreamStatus}).`, {
+      status: 502,
+      code: `E_CLOUDCONNEXA_${upstreamStatus}`,
+    })
+    Object.assign(error, { upstreamMethod: method, upstreamPath: path, upstreamStatus })
+    return error
   }
 
   /**

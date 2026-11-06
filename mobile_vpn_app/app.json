@@ -10,13 +10,15 @@
       "supportsTablet": true
     },
     "android": {
+      "package": "com.saganexus.mobilevpn",
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "softwareKeyboardLayoutMode": "resize"
     },
     "web": {
       "favicon": "./assets/branding/saganexus-symbol.png",
@@ -31,6 +33,18 @@
       ],
       "expo-status-bar",
       "expo-secure-store"
-    ]
+    ],
+    "extra": {
+      "router": {
+        "root": "src/app",
+        "asyncRoutes": {
+          "web": true
+        }
+      },
+      "eas": {
+        "projectId": "fc2abdc0-41d4-4188-8335-a6d685b4892b"
+      }
+    },
+    "owner": "lucasfreire00"
   }
 }

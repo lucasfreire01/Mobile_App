@@ -25,9 +25,18 @@ export default class CloudConnexaProvider implements VpnProvider {
         routeId: resources.ipServiceId,
       }
     } catch (error) {
-      const code = (error as { code?: string })?.code ?? ''
+      const cause = error as {
+        code?: string
+        upstreamMethod?: string
+        upstreamPath?: string
+        upstreamStatus?: number
+      }
+      const code = cause?.code ?? ''
       if (/^E_CLOUDCONNEXA_4\d\d$/.test(code) && code !== 'E_CLOUDCONNEXA_408') {
-        throw new VpnProvisioningRejectedError()
+        throw new VpnProvisioningRejectedError(
+          cause.upstreamMethod && cause.upstreamPath && cause.upstreamStatus
+            ? { method: cause.upstreamMethod, path: cause.upstreamPath, status: cause.upstreamStatus }
+          : undefined)
       }
       throw error
     }

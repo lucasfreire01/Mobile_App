@@ -11,6 +11,7 @@ type MonitorOptions = {
   probeTimeoutMs?: number
   cycleTimeoutMs?: number
   probe?: (gateway: Gateway, signal: AbortSignal) => Promise<{ wanIpAddress: string | null }>
+  onProbeError?: (gatewayId: number, error: unknown) => void
 }
 
 function bounded(value: number, maximum: number) {
@@ -28,6 +29,7 @@ export default class GatewayStatusJob {
   private readonly probeTimeoutMs: number
   private readonly cycleTimeoutMs: number
   private readonly probe: NonNullable<MonitorOptions['probe']>
+  private readonly onProbeError: NonNullable<MonitorOptions['onProbeError']>
 
   constructor(options: MonitorOptions = {}) {
     this.concurrency = bounded(options.concurrency ?? env.get('GATEWAY_MONITOR_CONCURRENCY', 5), 20)
@@ -42,6 +44,7 @@ export default class GatewayStatusJob {
     )
     const ssh = new GatewaySshService()
     this.probe = options.probe ?? ((gateway, signal) => ssh.probeStatus(gateway, signal))
+    this.onProbeError = options.onProbeError ?? (() => {})
   }
 
   async run() {
@@ -103,7 +106,8 @@ export default class GatewayStatusJob {
                 update.wan_ip_address = result.wanIpAddress
                 update.wan_ip_observed_at = new Date()
               }
-            } catch {
+            } catch (error) {
+              this.onProbeError(gateway.id, error)
               update.status = 'offline'
             } finally {
               clearTimeout(timeout)

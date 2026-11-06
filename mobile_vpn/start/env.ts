@@ -44,6 +44,7 @@ export default await Env.create(new URL('../', import.meta.url), {
 
   // CloudConnexa
   VPN_PROVIDER: Env.schema.string.optional(),
+  EC2_OPENVPN_PROVISIONER: Env.schema.string.optional(),
   CLOUDCONNEXA_BASE_URL: Env.schema.string.optional({ format: 'url', tld: false }),
   CLOUDCONNEXA_CLIENT_ID: Env.schema.string.optional(),
   CLOUDCONNEXA_CLIENT_SECRET: Env.schema.secret.optional(),

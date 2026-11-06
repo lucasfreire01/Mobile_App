@@ -1,13 +1,13 @@
 {
-  "startedAt": "2026-10-30T14:18:39.964Z",
-  "database": "saganexus_test_5397b67dcca152b4a78bbb3c",
+  "startedAt": "2026-11-06T11:49:02.094Z",
+  "database": "saganexus_test_198ca6be185cb76627bb3f86",
   "testRoleSuperuser": false,
   "credentialsPersisted": false,
   "operationalDatabaseUsedForTests": false,
   "operationalTableAccessDenied": true,
   "exitCode": 0,
-  "testsPassed": 105,
+  "testsPassed": 6,
   "databaseRemoved": true,
   "roleRemoved": true,
-  "finishedAt": "2026-10-30T14:18:46.013Z"
+  "finishedAt": "2026-11-06T11:49:05.355Z"
 }

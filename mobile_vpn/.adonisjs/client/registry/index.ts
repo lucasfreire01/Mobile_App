@@ -12,6 +12,18 @@ const routes = {
     tokens: [{"old":"/health","type":0,"val":"health","end":""}],
     types: placeholder as Registry['health.show']['types'],
   },
+  'gateways.enroll': {
+    methods: ["POST"],
+    pattern: '/api/v1/gateways/enrollment/claim',
+    tokens: [{"old":"/api/v1/gateways/enrollment/claim","type":0,"val":"api","end":""},{"old":"/api/v1/gateways/enrollment/claim","type":0,"val":"v1","end":""},{"old":"/api/v1/gateways/enrollment/claim","type":0,"val":"gateways","end":""},{"old":"/api/v1/gateways/enrollment/claim","type":0,"val":"enrollment","end":""},{"old":"/api/v1/gateways/enrollment/claim","type":0,"val":"claim","end":""}],
+    types: placeholder as Registry['gateways.enroll']['types'],
+  },
+  'gateways.complete_enrollment': {
+    methods: ["POST"],
+    pattern: '/api/v1/gateways/enrollment/complete',
+    tokens: [{"old":"/api/v1/gateways/enrollment/complete","type":0,"val":"api","end":""},{"old":"/api/v1/gateways/enrollment/complete","type":0,"val":"v1","end":""},{"old":"/api/v1/gateways/enrollment/complete","type":0,"val":"gateways","end":""},{"old":"/api/v1/gateways/enrollment/complete","type":0,"val":"enrollment","end":""},{"old":"/api/v1/gateways/enrollment/complete","type":0,"val":"complete","end":""}],
+    types: placeholder as Registry['gateways.complete_enrollment']['types'],
+  },
   'auth.access_tokens.store': {
     methods: ["POST"],
     pattern: '/api/v1/auth/login',

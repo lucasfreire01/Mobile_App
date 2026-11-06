@@ -23,6 +23,7 @@ export default function NewGatewayScreen() {
   const [location, setLocation] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [enrollmentCode, setEnrollmentCode] = useState<string | null>(null);
 
   async function createGateway() {
     if (!name.trim()) {
@@ -52,6 +53,10 @@ export default function NewGatewayScreen() {
         );
       }
 
+      if (typeof body?.enrollmentCode === "string") {
+        setEnrollmentCode(body.enrollmentCode);
+        return;
+      }
       const gatewayId = body?.gateway?.id;
       router.replace(gatewayId ? `/gateways/${gatewayId}` : "/gateways");
     } catch (createError) {
@@ -68,8 +73,10 @@ export default function NewGatewayScreen() {
   return (
     <SafeAreaView className="flex-1 bg-canvas" edges={["top", "bottom"]}>
       <ScreenHeader
-        title="Novo gateway"
-        subtitle="Cadastre o equipamento e prepare os recursos de conexão."
+        title={enrollmentCode ? "Gateway criado" : "Novo gateway"}
+        subtitle={enrollmentCode
+          ? "Use este código no instalador aberto no computador conectado ao gateway."
+          : "Cadastre o equipamento e prepare os recursos de conexão."}
       />
       <KeyboardAvoidingView
         className="flex-1"
@@ -80,6 +87,20 @@ export default function NewGatewayScreen() {
           contentContainerClassName="w-full max-w-3xl self-center flex-grow gap-5 px-5 py-6 pb-10 md:py-8"
           keyboardShouldPersistTaps="handled"
         >
+          {enrollmentCode ? (
+            <View className="gap-4 rounded-2xl border border-[#cddbd5] bg-white p-5">
+              <Text className="text-sm font-semibold text-slate-700">
+                Código de vínculo válido por 24 horas
+              </Text>
+              <Text selectable className="rounded-xl bg-[#e8efea] p-4 font-mono text-lg text-slate-900">
+                {enrollmentCode}
+              </Text>
+              <Text className="text-sm leading-5 text-slate-600">
+                Digite este código no instalador do gateway. Ele será removido
+                do equipamento depois que a conexão for confirmada.
+              </Text>
+            </View>
+          ) : <>
           <View className="border-b border-[#cddbd5] pb-6">
             <Text className="text-[10px] font-bold tracking-[1.6px] text-slate-500">
               01  /  IDENTIDADE DO EQUIPAMENTO
@@ -158,6 +179,7 @@ export default function NewGatewayScreen() {
               {submitting ? "Provisionando gateway…" : "Criar gateway"}
             </Text>
           </Pressable>
+          </>}
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>

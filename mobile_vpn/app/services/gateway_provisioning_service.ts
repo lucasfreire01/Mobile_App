@@ -1,6 +1,6 @@
 import db from '@adonisjs/lucid/services/db'
 import { Exception } from '@adonisjs/core/exceptions'
-import { randomUUID } from 'node:crypto'
+import { createHash, randomBytes, randomUUID } from 'node:crypto'
 import Gateway from '#models/gateway'
 import GatewayService from '#services/gateway_service'
 import { resolveVpnProvider, gatewayVpnAttributes } from '#services/vpn/registry'
@@ -34,8 +34,15 @@ export default class GatewayProvisioningService {
   constructor(private provider?: VpnProvider) {}
 
   async create(payload: Payload) {
+    return (await this.createWithEnrollmentCode(payload)).gateway
+  }
+
+  async createWithEnrollmentCode(payload: Payload) {
     const provider = this.provider ?? (await resolveVpnProvider())
     const token = randomUUID()
+    const enrollmentCode = randomBytes(32).toString('base64url')
+    const enrollmentTokenHash = createHash('sha256').update(enrollmentCode).digest('hex')
+    const enrollmentExpiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000)
     const managementIpAddress = await db.transaction(async (trx) => {
       await trx.rawQuery("SET LOCAL lock_timeout = '5s'")
       await trx.rawQuery('SELECT pg_advisory_xact_lock(?)', [MANAGEMENT_IP_LOCK])
@@ -94,7 +101,14 @@ export default class GatewayProvisioningService {
           { client: trx }
         )
         await trx.from('gateway_ip_reservations').where('token', token).delete()
-        return gateway
+        await trx.table('gateway_enrollments').insert({
+          gateway_id: gateway.id,
+          token_hash: enrollmentTokenHash,
+          expires_at: enrollmentExpiresAt,
+          created_at: new Date(),
+          updated_at: new Date(),
+        })
+        return { gateway, enrollmentCode }
       })
     } catch (error) {
       if (networkId) {

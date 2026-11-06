@@ -13,6 +13,7 @@
     "build": "node ace build",
     "dev": "node ace serve --hmr",
     "worker:gateway-network": "node ace gateway:network-worker",
+    "worker:gateway-status": "node ace gateway:status-worker",
     "db:runtime:prepare": "node scripts/provision-database-runtime.mjs prepare",
     "db:runtime:verify": "node scripts/provision-database-runtime.mjs verify",
     "db:runtime:activate": "node scripts/provision-database-runtime.mjs activate",

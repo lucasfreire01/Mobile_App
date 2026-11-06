@@ -5,20 +5,9 @@ export interface ApiDefinition {
   health: {
     show: typeof routes['health.show']
   }
-  auth: {
-    accessTokens: {
-      store: typeof routes['auth.access_tokens.store']
-    }
-  }
-  profile: {
-    profile: {
-      show: typeof routes['profile.profile.show']
-    }
-    accessTokens: {
-      destroy: typeof routes['profile.access_tokens.destroy']
-    }
-  }
   gateways: {
+    enroll: typeof routes['gateways.enroll']
+    completeEnrollment: typeof routes['gateways.complete_enrollment']
     index: typeof routes['gateways.index']
     store: typeof routes['gateways.store']
     show: typeof routes['gateways.show']
@@ -31,6 +20,19 @@ export interface ApiDefinition {
       store: typeof routes['gateways.ethernet.store']
       show: typeof routes['gateways.ethernet.show']
       update: typeof routes['gateways.ethernet.update']
+    }
+  }
+  auth: {
+    accessTokens: {
+      store: typeof routes['auth.access_tokens.store']
+    }
+  }
+  profile: {
+    profile: {
+      show: typeof routes['profile.profile.show']
+    }
+    accessTokens: {
+      destroy: typeof routes['profile.access_tokens.destroy']
     }
   }
   users: {
