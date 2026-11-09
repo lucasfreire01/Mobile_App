@@ -8,6 +8,7 @@ import testUtils from '@adonisjs/core/services/test_utils'
 import { authApiClient } from '@adonisjs/auth/plugins/api_client'
 import { sessionApiClient } from '@adonisjs/session/plugins/api_client'
 import type { Registry } from '../.adonisjs/client/registry/schema.d.ts'
+import { verifyIsolatedTestDatabase } from './support/test_database_guard.js'
 
 /**
  * This file is imported by the "bin/test.ts" entrypoint file
@@ -40,9 +41,20 @@ export const plugins: Config['plugins'] = [
  * The setup functions are executed before all the tests
  * The teardown functions are executed after all the tests
  */
+let rollbackTestDatabase: (() => Promise<void>) | undefined
+
 export const runnerHooks: Required<Pick<Config, 'setup' | 'teardown'>> = {
-  setup: [],
-  teardown: [],
+  setup: [
+    async () => {
+      await verifyIsolatedTestDatabase()
+      rollbackTestDatabase = await testUtils.db().migrate()
+    },
+  ],
+  teardown: [
+    async () => {
+      await rollbackTestDatabase?.()
+    },
+  ],
 }
 
 /**

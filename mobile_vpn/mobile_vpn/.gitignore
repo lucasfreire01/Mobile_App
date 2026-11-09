@@ -1,26 +1,56 @@
-# Dependencies and AdonisJS build
-node_modules
-build
+# Dependencias
+node_modules/
+
+# Variaveis de ambiente e segredos
+.env
+.env.*
+!.env.example
+!.env.database-admin.example
+
+# Builds e arquivos compilados
+build/
+dist/
+out/
+coverage/
+
+# Arquivos gerados pelo AdonisJS (regerados conforme necessario)
+.adonisjs/
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+
+# Cache e arquivos temporarios
+.cache/
+.tmp/
+temp/
 tmp/*
 !tmp/.gitkeep
 
-# Secrets
-.env
-.env.local
-.env.production.local
-.env.development.local
-
-# Frontend assets compiled code
-public/assets
-
-# Build tools specific
-npm-debug.log
-yarn-error.log
-
-# Editors specific
-.fleet
-.idea
-.vscode
-
-# Platform specific
+# Sistema operacional
 .DS_Store
+Thumbs.db
+Desktop.ini
+
+# Editores
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Certificados e chaves privadas
+*.pem
+*.key
+*.p12
+*.pfx
+
+# Bancos de dados locais
+*.sqlite
+*.sqlite3
+*.db
+
+# TypeScript
+*.tsbuildinfo

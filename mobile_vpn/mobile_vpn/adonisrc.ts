@@ -53,6 +53,11 @@ export default defineConfig({
     () => import('@adonisjs/cors/cors_provider'),
     () => import('@adonisjs/auth/auth_provider'),
     () => import('#providers/api_provider'),
+    {
+      file: () => import('#providers/scheduler_provider'),
+      environment: ['web'],
+    },
+    () => import('@adonisjs/limiter/limiter_provider'),
   ],
 
   /*
@@ -64,6 +69,7 @@ export default defineConfig({
   |
   */
   preloads: [
+    () => import('#start/vpn'),
     () => import('#start/routes'),
     () => import('#start/kernel'),
     () => import('#start/validator'),
@@ -103,7 +109,11 @@ export default defineConfig({
   | the production build.
   |
   */
-  metaFiles: [],
+  metaFiles: [
+    { pattern: 'scripts/database-roles.mjs', reloadServer: false },
+    { pattern: 'scripts/provision-database-runtime.mjs', reloadServer: false },
+    { pattern: 'scripts/with-db-admin.mjs', reloadServer: false },
+  ],
 
   hooks: {
     init: [

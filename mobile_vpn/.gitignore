@@ -1,7 +1,8 @@
-# Dependencias
+# Dependências
 node_modules/
+/.tools/
 
-# Variaveis de ambiente e segredos
+# Variáveis de ambiente e segredos
 .env
 .env.*
 !.env.example
@@ -13,9 +14,6 @@ dist/
 out/
 coverage/
 
-# Arquivos gerados pelo AdonisJS (regerados conforme necessario)
-.adonisjs/
-
 # Logs
 logs/
 *.log
@@ -23,7 +21,7 @@ npm-debug.log*
 yarn-debug.log*
 pnpm-debug.log*
 
-# Cache e arquivos temporarios
+# Cache e arquivos temporários
 .cache/
 .tmp/
 temp/
@@ -47,10 +45,10 @@ Desktop.ini
 *.p12
 *.pfx
 
-# Bancos de dados locais
+# Arquivos locais de banco de dados
 *.sqlite
 *.sqlite3
 *.db
 
-# TypeScript
+# Arquivos TypeScript
 *.tsbuildinfo

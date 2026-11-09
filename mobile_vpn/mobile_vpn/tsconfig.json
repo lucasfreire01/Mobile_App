@@ -3,6 +3,10 @@
   "compilerOptions": {
     "rootDir": "./",
     "jsx": "react",
-    "outDir": "./build"
-  }
+    "outDir": "./build",
+    "paths": {
+      "#database/schema": ["./database/schema.ts"]
+    }
+  },
+  "exclude": ["mobile_vpn", "build", "node_modules"]
 }

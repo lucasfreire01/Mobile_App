@@ -1,38 +1,151 @@
 import Gateway from '#models/gateway'
 import GatewayEthernetConfig from '#models/gateway_ethernet_config'
 import { updateGatewayEthernetConfValidator } from '#validators/gateway_ethernet_config'
-import { HttpContext } from '@adonisjs/core/http'
+import type { HttpContext } from '@adonisjs/core/http'
 import GatewaySshService from '#services/gateway_ssh_service'
+import GatewayNetworkOperation from '#models/gateway_network_operation'
+import { DateTime } from 'luxon'
+import { ensureAllowedSshAddress } from '#services/gateway_ssh_address_policy'
+
+const ACTIVE_OPERATION_INDEX = 'gateway_network_operations_one_active_per_gateway'
+
+function isActiveOperationConflict(error: unknown) {
+  if (typeof error !== 'object' || error === null) {
+    return false
+  }
+
+  const databaseError = error as { code?: unknown; constraint?: unknown }
+
+  return databaseError.code === '23505' && databaseError.constraint === ACTIVE_OPERATION_INDEX
+}
 
 export default class GatewayEthernetsController {
-  async show({ params, response }: HttpContext) {
-    const gateway = await Gateway.query()
-      .where('id', params.id)
-      .preload('ethernetConfig')
-      .firstOrFail()
+  async index({ params, response }: HttpContext) {
+    const gateway = await Gateway.findOrFail(params.gateway_id)
+    const ethernetConfigs = await GatewayEthernetConfig.query().where('gateway_id', gateway.id)
 
-    return response.ok({
-      ethernetConfig: gateway.ethernetConfig,
+    return response.ok({ ethernetConfigs })
+  }
+
+  async store({ params, request, response }: HttpContext) {
+    const gateway = await Gateway.findOrFail(params.gateway_id)
+    const payload = await request.validateUsing(updateGatewayEthernetConfValidator)
+    const existingConfig = await GatewayEthernetConfig.query()
+      .where('gateway_id', gateway.id)
+      .first()
+
+    if (existingConfig) {
+      return response.status(500).send({ message: 'Ethernet configuration already exists' })
+    }
+
+    const ethernetConfig = await GatewayEthernetConfig.create({
+      gatewayId: gateway.id,
+      ...payload,
+    })
+
+    return response.created({
+      message: 'Ethernet configuration saved',
+      ethernetConfig,
     })
   }
+
+  async show({ params, response }: HttpContext) {
+    const gateway = await Gateway.findOrFail(params.gateway_id)
+    const ethernetConfig = await GatewayEthernetConfig.query()
+      .where('gateway_id', gateway.id)
+      .where('id', params.id)
+      .firstOrFail()
+
+    return response.ok({ ethernetConfig })
+  }
+
   async hostname({ params, response }: HttpContext) {
-    const gateway = await Gateway.findByOrFail(params.id)
+    const gateway = await Gateway.findOrFail(params.id)
     const gatewaySshService = new GatewaySshService()
     const hostname = await gatewaySshService.getHostname(gateway)
     return response.ok({ hostname })
   }
 
-  async update({ params, request, response }: HttpContext) {
+  async device({ params, response }: HttpContext) {
     const gateway = await Gateway.findOrFail(params.id)
+    const gatewaySshService = new GatewaySshService()
+    const config = await gatewaySshService.getEthernetConfig(gateway)
+
+    return response.ok({ config })
+  }
+
+  async apply({ params, response, auth }: HttpContext) {
+    const gateway = await Gateway.findOrFail(params.id)
+    const user = auth.getUserOrFail()
+
+    const ethernetConfig = await GatewayEthernetConfig.query()
+      .where('gateway_id', gateway.id)
+      .firstOrFail()
+    if (ethernetConfig.mode === 'static' && ethernetConfig.staticIpAddress) {
+      ensureAllowedSshAddress(ethernetConfig.staticIpAddress)
+    }
+
+    const operationInProgress = await GatewayNetworkOperation.query()
+      .where('gateway_id', gateway.id)
+      .whereIn('status', ['pending', 'applying'])
+      .first()
+
+    if (operationInProgress) {
+      return response.conflict({
+        message: 'Gateway already has a network operation in progress.',
+      })
+    }
+
+    let operation: GatewayNetworkOperation
+
+    try {
+      operation = await GatewayNetworkOperation.create({
+        gatewayId: gateway.id,
+        action: ethernetConfig.mode === 'dhcp' ? 'apply_dhcp' : 'apply_static',
+        status: 'pending',
+        attempts: 0,
+        availableAt: DateTime.now(),
+        requestedByUserId: user.id,
+        requestedByEmail: user.email,
+        payload: {
+          mode: ethernetConfig.mode,
+          dhcpFallbackEnabled: ethernetConfig.dhcpFallbackEnabled,
+          staticIpAddress: ethernetConfig.staticIpAddress,
+          staticPrefixLength: ethernetConfig.staticPrefixLength,
+          staticGateway: ethernetConfig.staticGateway,
+          primaryDns: ethernetConfig.primaryDns,
+          secondaryDns: ethernetConfig.secondaryDns,
+        },
+      })
+    } catch (error) {
+      if (isActiveOperationConflict(error)) {
+        return response.conflict({
+          message: 'Gateway already has a network operation in progress.',
+        })
+      }
+
+      throw error
+    }
+
+    return response.accepted({
+      message: 'Ethernet configuration queued.',
+      operation,
+    })
+  }
+
+  async update({ params, request, response }: HttpContext) {
+    const gateway = await Gateway.findOrFail(params.gateway_id)
+    const ethernetConfig = await GatewayEthernetConfig.query()
+      .where('gateway_id', gateway.id)
+      .where('id', params.id)
+      .firstOrFail()
     const payload = await request.validateUsing(updateGatewayEthernetConfValidator)
 
-    const ethernetConfig = await GatewayEthernetConfig.updateOrCreate(
-      { gatewayId: gateway.id },
-      payload
-    )
+    ethernetConfig.merge(payload)
+    await ethernetConfig.save()
 
     return response.ok({
-      message: 'Configuração Ethernet atualizada',
+      message: 'Ethernet configuration saved',
       ethernetConfig,
     })
   }

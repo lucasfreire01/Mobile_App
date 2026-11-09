@@ -1,12 +1,80 @@
 {
-  "extends": "@adonisjs/tsconfig/tsconfig.app.json",
+  "extends": "./mobile_vpn/tsconfig.json",
   "compilerOptions": {
     "rootDir": "./",
-    "jsx": "react",
-    "outDir": "./build",
+    "noEmit": true,
     "paths": {
-      "#database/schema": ["./database/schema.ts"]
+      "#controllers/*": [
+        "./mobile_vpn/app/controllers/*.ts"
+      ],
+      "#exceptions/*": [
+        "./mobile_vpn/app/exceptions/*.ts"
+      ],
+      "#models/*": [
+        "./mobile_vpn/app/models/*.ts"
+      ],
+      "#mails/*": [
+        "./mobile_vpn/app/mails/*.ts"
+      ],
+      "#jobs/*": [
+        "./mobile_vpn/app/jobs/*.ts"
+      ],
+      "#services/*": [
+        "./mobile_vpn/app/services/*.ts"
+      ],
+      "#listeners/*": [
+        "./mobile_vpn/app/listeners/*.ts"
+      ],
+      "#events/*": [
+        "./mobile_vpn/app/events/*.ts"
+      ],
+      "#generated/*": [
+        "./mobile_vpn/.adonisjs/server/*.ts"
+      ],
+      "#middleware/*": [
+        "./mobile_vpn/app/middleware/*.ts"
+      ],
+      "#transformers/*": [
+        "./mobile_vpn/app/transformers/*.ts"
+      ],
+      "#validators/*": [
+        "./mobile_vpn/app/validators/*.ts"
+      ],
+      "#providers/*": [
+        "./mobile_vpn/providers/*.ts"
+      ],
+      "#policies/*": [
+        "./mobile_vpn/app/policies/*.ts"
+      ],
+      "#abilities/*": [
+        "./mobile_vpn/app/abilities/*.ts"
+      ],
+      "#database/*": [
+        "./mobile_vpn/database/*.ts"
+      ],
+      "#tests/*": [
+        "./mobile_vpn/tests/*.ts"
+      ],
+      "#start/*": [
+        "./mobile_vpn/start/*.ts"
+      ],
+      "#config/*": [
+        "./mobile_vpn/config/*.ts"
+      ],
+      "#database/schema": [
+        "./mobile_vpn/database/schema.ts"
+      ]
     }
   },
-  "exclude": ["mobile_vpn", "build", "node_modules"]
+  "include": [
+    "app/**/*.ts",
+    "start/**/*.ts",
+    "mobile_vpn/adonisrc.ts",
+    "mobile_vpn/config/**/*.ts"
+  ],
+  "exclude": [
+    "build",
+    "node_modules",
+    "mobile_vpn/mobile_vpn"
+  ]
 }
