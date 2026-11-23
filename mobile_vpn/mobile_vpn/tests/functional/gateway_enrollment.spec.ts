@@ -1,5 +1,5 @@
 import { test } from '@japa/runner'
-import { createHash } from 'node:crypto'
+import { createHash, randomBytes } from 'node:crypto'
 
 const fingerprint = `SHA256:${createHash('sha256').update('test-gateway-host-key').digest('base64').replace(/=+$/, '')}`
 const otherFingerprint = `SHA256:${createHash('sha256').update('different-host-key').digest('base64').replace(/=+$/, '')}`
@@ -10,6 +10,7 @@ import User from '#models/user'
 import CloudConnexaService from '#services/cloud_connexa_service'
 import CloudConnexaProvider from '#services/vpn/cloud_connexa_provider'
 import GatewayProvisioningService from '#services/gateway_provisioning_service'
+import BridgePairingService from '#services/bridge_pairing_service'
 
 test.group('Gateway enrollment', (group) => {
   const profile = '<cert>\nFAKE-CERT\n</cert>\n<key>\nFAKE-KEY\n</key>\n'
@@ -86,6 +87,117 @@ test.group('Gateway enrollment', (group) => {
       (await db.from('gateway_enrollments').where('gateway_id', gateway.id).firstOrFail())
         .claimed_at
     )
+  })
+
+  test('a bridge-approved device can claim the profile while a parallel claim conflicts', async ({
+    client,
+    assert,
+  }) => {
+    const { gateway, enrollmentCode } =
+      await new GatewayProvisioningService().createWithEnrollmentCode({ name: 'bridge-claim' })
+    const bridge = new BridgePairingService()
+    const owner = await User.create({
+      email: 'bridge-claim@example.test', password: 'test-only-password', isAdmin: true,
+    })
+    const grant = await bridge.provisionBridge(owner.id)
+    const bridgeToken = randomBytes(32).toString('base64url')
+    await bridge.activateBridge(grant.bridgeId, grant.installationToken, bridgeToken)
+    const gatewayMac = '00:16:16:2b:c7:26'
+    const pairing = await bridge.create([gatewayMac], { bridgeId: grant.bridgeId, token: bridgeToken })
+    await bridge.authorize(pairing.sessionId, owner.id, { gatewayId: gateway.id, gatewayMac, enrollmentCode })
+
+    let entered!: () => void
+    let release!: () => void
+    const started = new Promise<void>((resolve) => { entered = resolve })
+    const gate = new Promise<void>((resolve) => { release = resolve })
+    CloudConnexaProvider.prototype.getProfile = async () => {
+      profileCalls++
+      entered()
+      await gate
+      return { content: profile, format: 'openvpn' }
+    }
+    const claim = () => client.post('/api/v1/gateways/enrollment/claim').json({ code: enrollmentCode })
+    const first = claim().then((response) => response)
+    await started
+    try {
+      const duplicate = await claim()
+      duplicate.assertStatus(409)
+      assert.include(JSON.stringify(duplicate.body()), 'E_GATEWAY_CONNECTION_IN_PROGRESS')
+    } finally {
+      release()
+    }
+    const claimed = await first
+    claimed.assertStatus(200)
+    assert.equal(profileCalls, 1)
+    await gateway.merge({ status: 'online' }).save()
+    const connected = await claim()
+    connected.assertStatus(409)
+    assert.equal(profileCalls, 1)
+  })
+
+  test('claim rejects a WireGuard profile and the same code can retry with OpenVPN', async ({
+    client,
+    assert,
+  }) => {
+    const { gateway, enrollmentCode } =
+      await new GatewayProvisioningService().createWithEnrollmentCode({ name: 'wireguard-claim' })
+    const openVpnProfile = CloudConnexaProvider.prototype.getProfile
+    const wireGuardContent = 'synthetic-wireguard-profile'
+    CloudConnexaProvider.prototype.getProfile = async () => ({
+      content: wireGuardContent,
+      format: 'wireguard' as 'openvpn',
+    })
+
+    const rejected = await client
+      .post('/api/v1/gateways/enrollment/claim')
+      .json({ code: enrollmentCode })
+    rejected.assertStatus(502)
+    const errorBody = JSON.stringify(rejected.body())
+    assert.notInclude(errorBody, wireGuardContent)
+    assert.notInclude(errorBody, Buffer.from(wireGuardContent).toString('base64'))
+    assert.isNull(
+      (await db.from('gateway_enrollments').where('gateway_id', gateway.id).firstOrFail())
+        .claimed_at
+    )
+
+    CloudConnexaProvider.prototype.getProfile = openVpnProfile
+    const retry = await client
+      .post('/api/v1/gateways/enrollment/claim')
+      .json({ code: enrollmentCode })
+    retry.assertStatus(200)
+    assert.equal(retry.body().vpn.format, 'openvpn')
+    assert.equal(Buffer.from(retry.body().vpn.contentBase64, 'base64').toString(), profile)
+  })
+
+  test('does not return a profile if completion consumes the code during the fetch', async ({
+    client,
+    assert,
+  }) => {
+    const { enrollmentCode } = await new GatewayProvisioningService().createWithEnrollmentCode({
+      name: 'claim-complete-race',
+    })
+    let entered!: () => void
+    let release!: () => void
+    const started = new Promise<void>((resolve) => { entered = resolve })
+    const gate = new Promise<void>((resolve) => { release = resolve })
+    CloudConnexaProvider.prototype.getProfile = async () => {
+      entered()
+      await gate
+      return { content: profile, format: 'openvpn' }
+    }
+    const claim = client.post('/api/v1/gateways/enrollment/claim').json({ code: enrollmentCode })
+      .then((response) => response)
+    await started
+    try {
+      const completed = await client.post('/api/v1/gateways/enrollment/complete')
+        .json({ code: enrollmentCode, sshHostKeyFingerprint: fingerprint })
+      completed.assertStatus(204)
+    } finally {
+      release()
+    }
+    const response = await claim
+    response.assertStatus(404)
+    assert.notProperty(response.body(), 'vpn')
   })
 
   test('unknown and malformed codes do not retrieve a profile', async ({ client, assert }) => {

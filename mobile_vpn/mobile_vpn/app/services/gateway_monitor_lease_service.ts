@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto'
 import db from '@adonisjs/lucid/services/db'
 import type { TransactionClientContract } from '@adonisjs/lucid/types/database'
+import type Gateway from '#models/gateway'
 
 export const GATEWAY_MONITOR_NAME = 'gateway-status'
 
@@ -83,15 +84,31 @@ export default class GatewayMonitorLeaseService {
 
   async publish(
     lease: MonitorLease,
-    gateway: { id: number; managementIpAddress: string | null },
+    gateway: Pick<Gateway, 'id' | 'managementIpAddress'> &
+      Partial<Pick<Gateway, 'vpnProvider' | 'vpnResources' | 'sshHostKeyFingerprint'>>,
     update: Record<string, string | Date>
   ) {
     return this.owned(lease, async (trx) => {
-      await trx
-        .from('gateways')
-        .where('id', gateway.id)
-        .where('management_ip_address', gateway.managementIpAddress!)
-        .update(update)
+      const query = trx.from('gateways').where('id', gateway.id)
+      if (gateway.managementIpAddress === null) {
+        query.whereNull('management_ip_address')
+      } else {
+        query.where('management_ip_address', gateway.managementIpAddress)
+      }
+      if (gateway.vpnProvider !== undefined) {
+        query.where('vpn_provider', gateway.vpnProvider)
+        if (gateway.vpnResources) {
+          query.whereRaw('vpn_resources = ?::jsonb', [JSON.stringify(gateway.vpnResources)])
+        } else {
+          query.whereNull('vpn_resources')
+        }
+        if (gateway.sshHostKeyFingerprint !== null && gateway.sshHostKeyFingerprint !== undefined) {
+          query.where('ssh_host_key_fingerprint', gateway.sshHostKeyFingerprint)
+        } else {
+          query.whereNull('ssh_host_key_fingerprint')
+        }
+      }
+      await query.update(update)
     })
   }
 

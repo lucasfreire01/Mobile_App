@@ -3,6 +3,7 @@ import { VpnProvisioningRejectedError, type VpnProvider } from '#services/vpn/ty
 
 export default class CloudConnexaProvider implements VpnProvider {
   readonly id = 'cloudconnexa'
+  readonly profileFormats = ['openvpn'] as const
 
   constructor(private client = new CloudConnexaService()) {
     this.client.ensureConfigured()
@@ -52,8 +53,19 @@ export default class CloudConnexaProvider implements VpnProvider {
     }
   }
 
-  async deleteGateway(networkId: string) {
-    await this.client.deleteNetwork(networkId)
+  async deleteGateway(networkId: string, options?: { allowMissing?: boolean }) {
+    try {
+      await this.client.deleteNetwork(networkId)
+    } catch (error) {
+      const upstream = error as { upstreamMethod?: unknown; upstreamStatus?: unknown } | null
+      if (
+        !options?.allowMissing ||
+        upstream?.upstreamMethod !== 'DELETE' ||
+        (upstream.upstreamStatus !== 400 && upstream.upstreamStatus !== 404)
+      ) {
+        throw error
+      }
+    }
   }
 
   async updateRoutes(routeId: string, routes: string[]) {

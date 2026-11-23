@@ -26,6 +26,8 @@ export const tablePrivileges = {
   gateway_ssh_host_key_rotations: ['SELECT', 'INSERT'],
   worker_heartbeats: ['SELECT', 'INSERT', 'UPDATE'],
   rate_limits: ['SELECT', 'INSERT', 'UPDATE', 'DELETE'],
+  saganexus_shared_cache: ['SELECT', 'INSERT', 'UPDATE'],
+  vpn_account_migrations: ['SELECT', 'INSERT', 'UPDATE', 'DELETE'],
 }
 
 export function databaseClient(app, credentials) {

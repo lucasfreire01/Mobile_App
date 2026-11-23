@@ -1,12 +1,23 @@
 import env from '#start/env'
 import { Exception } from '@adonisjs/core/exceptions'
+import { createHash } from 'node:crypto'
 
-type TokenCache = { value: string; expiresAt: number }
+type TokenCache = { value: string; expiresAt: number; accountIdentity: string }
 
 export type GatewayVpnResources = {
   networkId: string
   connectorId: string
   ipServiceId: string
+}
+
+type ExistingIpService = {
+  id?: string
+  type?: string
+  networkItemId?: string
+  routes?: Array<{ subnet?: string; value?: string }>
+  network?: { id?: string; connectors?: Array<{ id?: string }> }
+  connector?: { id?: string }
+  connectors?: Array<{ id?: string }>
 }
 
 export default class CloudConnexaService {
@@ -26,6 +37,22 @@ export default class CloudConnexaService {
     }
   }
 
+  /** Stable, non-secret identity for the configured CloudConnexa account. */
+  accountIdentity(): string {
+    this.ensureConfigured()
+    const value = [
+      env.get('CLOUDCONNEXA_BASE_URL')!.replace(/\/$/, ''),
+      env.get('CLOUDCONNEXA_CLIENT_ID'),
+      env.get('CLOUDCONNEXA_ACCESS_GROUP_ID') ?? '',
+      env.get('CLOUDCONNEXA_REGION') ?? '',
+    ].join('|')
+    const identity = createHash('sha256').update(value).digest('hex')
+    if (CloudConnexaService.token && CloudConnexaService.token.accountIdentity !== identity) {
+      CloudConnexaService.token = null
+    }
+    return identity
+  }
+
   private get baseUrl() {
     this.ensureConfigured()
     return env.get('CLOUDCONNEXA_BASE_URL')!.replace(/\/$/, '')
@@ -33,7 +60,9 @@ export default class CloudConnexaService {
 
   private async getToken(): Promise<string> {
     const cached = CloudConnexaService.token
-    if (cached && cached.expiresAt > Date.now() + 60_000) return cached.value
+    const identity = this.accountIdentity()
+    if (cached && cached.accountIdentity === identity && cached.expiresAt > Date.now() + 60_000)
+      return cached.value
 
     const basic = Buffer.from(
       `${env.get('CLOUDCONNEXA_CLIENT_ID')}:${env.get('CLOUDCONNEXA_CLIENT_SECRET')!.release()}`
@@ -50,6 +79,7 @@ export default class CloudConnexaService {
     CloudConnexaService.token = {
       value: data.access_token,
       expiresAt: Date.now() + data.expires_in * 1000,
+      accountIdentity: identity,
     }
     return data.access_token
   }
@@ -72,19 +102,56 @@ export default class CloudConnexaService {
 
     if (method === 'DELETE' && res.status === 404) return undefined as T
     if (!res.ok) {
-      await res.body?.cancel().catch(() => undefined)
-      throw this.error(method, path, res.status)
+      const upstreamBody = await this.readSafeErrorBody(res)
+      throw this.error(method, path, res.status, upstreamBody)
     }
     if (res.status === 204) return undefined as T
     return (asText ? await res.text() : await res.json()) as T
   }
 
-  private error(method: string, path: string, upstreamStatus: number) {
-    const error = new Exception(`CloudConnexa ${method} ${path} rejected the request (HTTP ${upstreamStatus}).`, {
-      status: 502,
-      code: `E_CLOUDCONNEXA_${upstreamStatus}`,
+  private async readSafeErrorBody(res: Response): Promise<unknown> {
+    let text = ''
+    try {
+      text = await res.text()
+      if (!text) return undefined
+      const parsed: unknown = JSON.parse(text)
+      return this.sanitizeErrorBody(parsed)
+    } catch {
+      return this.sanitizeErrorBody(text)
+    }
+  }
+
+  private sanitizeErrorBody(value: unknown): unknown {
+    if (Array.isArray(value)) return value.slice(0, 20).map((item) => this.sanitizeErrorBody(item))
+    if (!value || typeof value !== 'object') {
+      return typeof value === 'string' ? value.slice(0, 500) : value
+    }
+
+    const secretKey = /token|secret|password|authorization|client[_-]?id|access[_-]?key/i
+    return Object.fromEntries(
+      Object.entries(value as Record<string, unknown>)
+        .slice(0, 40)
+        .map(([key, item]) => [
+          key,
+          secretKey.test(key) ? '[REDACTED]' : this.sanitizeErrorBody(item),
+        ])
+    )
+  }
+
+  private error(method: string, path: string, upstreamStatus: number, upstreamBody?: unknown) {
+    const error = new Exception(
+      `CloudConnexa ${method} ${path} rejected the request (HTTP ${upstreamStatus}).`,
+      {
+        status: 502,
+        code: `E_CLOUDCONNEXA_${upstreamStatus}`,
+      }
+    )
+    Object.assign(error, {
+      upstreamMethod: method,
+      upstreamPath: path,
+      upstreamStatus,
+      upstreamBody,
     })
-    Object.assign(error, { upstreamMethod: method, upstreamPath: path, upstreamStatus })
     return error
   }
 
@@ -97,6 +164,11 @@ export default class CloudConnexaService {
     managementIp: string,
     onNetworkCreated?: (networkId: string) => Promise<void>
   ): Promise<GatewayVpnResources> {
+    const existing = await this.findExistingGatewayResources(managementIp)
+    if (existing) {
+      return existing
+    }
+
     const network = await this.request<{ id: string; connectors: { id: string }[] }>(
       'POST',
       '/api/v1/networks',
@@ -143,6 +215,52 @@ export default class CloudConnexaService {
       if (!onNetworkCreated) await this.deleteNetwork(network.id)
       throw err
     }
+  }
+
+  private async findExistingGatewayResources(
+    managementIp: string
+  ): Promise<GatewayVpnResources | null> {
+    const route = `${managementIp}/32`
+    const pageSize = 100
+
+    // CloudConnexa pagination is zero-based (`page: 0` is the first page).
+    for (let page = 0; page < 100; page += 1) {
+      const response = await this.request<{
+        content?: ExistingIpService[]
+        totalElements?: number
+        totalPages?: number
+        page?: number
+        size?: number
+      }>('GET', `/api/v1/networks/ip-services?page=${page}&size=${pageSize}`)
+      const items = response.content ?? []
+
+      for (const item of items) {
+        const hasRoute = item.routes?.some(
+          (entry) => entry.subnet === route || entry.value === route
+        )
+        if (item.type !== 'SERVICE_DESTINATION' || !item.id || !hasRoute) continue
+
+        const networkId = item.networkItemId
+        if (!networkId) continue
+        const network = await this.request<{ connectors?: Array<{ id?: string }> }>(
+          'GET',
+          `/api/v1/networks/${networkId}`
+        )
+        const connectorId = network.connectors?.[0]?.id
+        if (!connectorId) continue
+
+        return { networkId, connectorId, ipServiceId: item.id }
+      }
+
+      if (
+        items.length < pageSize ||
+        response.totalPages === page
+      ) {
+        break
+      }
+    }
+
+    return null
   }
 
   /** Returns the .ovpn profile content for the connector. */

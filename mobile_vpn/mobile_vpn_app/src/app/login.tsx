@@ -43,13 +43,14 @@ export default function LoginScreen() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const loginDisabled = submitting || !email.trim() || !password.trim();
 
   useEffect(() => {
     if (!isRestoring && token) router.replace("/");
   }, [isRestoring, token]);
 
   async function handleLogin() {
-    if (submitting || !email.trim() || !password) return;
+    if (loginDisabled) return;
     setError(null);
     setSubmitting(true);
     try {
@@ -65,8 +66,6 @@ export default function LoginScreen() {
       setSubmitting(false);
     }
   }
-
-  const loginDisabled = submitting || !email.trim() || !password;
 
   return (
     <SafeAreaView className="flex-1 bg-brand-blueDark" edges={["top", "bottom"]}>

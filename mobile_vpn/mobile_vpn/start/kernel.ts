@@ -25,6 +25,7 @@ server.errorHandler(() => import('#exceptions/handler'))
 server.use([
   () => import('#middleware/force_json_response_middleware'),
   () => import('#middleware/container_bindings_middleware'),
+  () => import('#middleware/request_payload_guard_middleware'),
   () => import('@adonisjs/cors/cors_middleware'),
 ])
 

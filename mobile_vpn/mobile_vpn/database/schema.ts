@@ -32,6 +32,25 @@ export class AuthAccessTokenSchema extends BaseModel {
   declare updatedAt: DateTime | null
 }
 
+export class GatewayEnrollmentSchema extends BaseModel {
+  static $columns = ['claimedAt', 'createdAt', 'expiresAt', 'gatewayId', 'id', 'tokenHash', 'updatedAt'] as const
+  $columns = GatewayEnrollmentSchema.$columns
+  @column.dateTime()
+  declare claimedAt: DateTime | null
+  @column.dateTime({ autoCreate: true })
+  declare createdAt: DateTime
+  @column.dateTime()
+  declare expiresAt: DateTime
+  @column()
+  declare gatewayId: number
+  @column({ isPrimary: true })
+  declare id: number
+  @column()
+  declare tokenHash: string
+  @column.dateTime({ autoCreate: true, autoUpdate: true })
+  declare updatedAt: DateTime
+}
+
 export class GatewayEthernetConfigSchema extends BaseModel {
   static $columns = ['createdAt', 'dhcpFallbackEnabled', 'gatewayId', 'id', 'mode', 'primaryDns', 'secondaryDns', 'staticGateway', 'staticIpAddress', 'staticPrefixLength', 'updatedAt'] as const
   $columns = GatewayEthernetConfigSchema.$columns
@@ -236,6 +255,19 @@ export class RateLimitSchema extends BaseModel {
   declare points: number
 }
 
+export class SaganexusSharedCacheSchema extends BaseModel {
+  static $columns = ['expiresAt', 'key', 'payload', 'updatedAt'] as const
+  $columns = SaganexusSharedCacheSchema.$columns
+  @column.dateTime()
+  declare expiresAt: DateTime
+  @column({ isPrimary: true })
+  declare key: string
+  @column()
+  declare payload: string
+  @column.dateTime({ autoCreate: true, autoUpdate: true })
+  declare updatedAt: DateTime
+}
+
 export class UserSchema extends BaseModel {
   static $columns = ['createdAt', 'email', 'fullName', 'id', 'isAdmin', 'password', 'updatedAt'] as const
   $columns = UserSchema.$columns
@@ -253,6 +285,35 @@ export class UserSchema extends BaseModel {
   declare password: string
   @column.dateTime({ autoCreate: true, autoUpdate: true })
   declare updatedAt: DateTime | null
+}
+
+export class VpnAccountMigrationSchema extends BaseModel {
+  static $columns = ['accountIdentity', 'completedAt', 'createdAt', 'errorCode', 'errorMessage', 'gatewaySnapshots', 'id', 'previousAccountIdentity', 'provider', 'startedAt', 'status', 'updatedAt'] as const
+  $columns = VpnAccountMigrationSchema.$columns
+  @column()
+  declare accountIdentity: string
+  @column.dateTime()
+  declare completedAt: DateTime | null
+  @column.dateTime({ autoCreate: true })
+  declare createdAt: DateTime
+  @column()
+  declare errorCode: string | null
+  @column()
+  declare errorMessage: string | null
+  @column()
+  declare gatewaySnapshots: any | null
+  @column({ isPrimary: true })
+  declare id: number
+  @column()
+  declare previousAccountIdentity: string | null
+  @column()
+  declare provider: string
+  @column.dateTime()
+  declare startedAt: DateTime
+  @column()
+  declare status: string
+  @column.dateTime({ autoCreate: true, autoUpdate: true })
+  declare updatedAt: DateTime
 }
 
 export class WorkerHeartbeatSchema extends BaseModel {

@@ -6,6 +6,11 @@ import { DateTime } from 'luxon'
 
 const DEFAULT_ALERTS_LIMIT = 20
 const MAX_ALERTS_LIMIT = 100
+const MAX_PAGE = 10_000
+
+function alertResponse(alert: GatewaySecurityAlert) {
+  return { id: alert.id, type: alert.type, status: alert.status, message: alert.message, createdAt: alert.createdAt, acknowledgedAt: alert.acknowledgedAt }
+}
 
 function parsePaginationParameter(value: unknown, fallback: number, maximum: number) {
   const parsed = Number(value)
@@ -20,7 +25,7 @@ function parsePaginationParameter(value: unknown, fallback: number, maximum: num
 export default class GatewaySecurityAlertsController {
   async index({ params, request, response }: HttpContext) {
     const gateway = await Gateway.findOrFail(params.id)
-    const page = parsePaginationParameter(request.input('page'), 1, Number.MAX_SAFE_INTEGER)
+    const page = parsePaginationParameter(request.input('page'), 1, MAX_PAGE)
     const limit = parsePaginationParameter(
       request.input('limit'),
       DEFAULT_ALERTS_LIMIT,
@@ -33,7 +38,7 @@ export default class GatewaySecurityAlertsController {
 
     alerts.baseUrl(`/api/v1/gateways/${gateway.id}/security-alerts`).queryString({ limit })
 
-    return response.ok({ alerts: alerts.all(), meta: alerts.getMeta() })
+    return response.ok({ alerts: alerts.all().map(alertResponse), meta: alerts.getMeta() })
   }
 
   async acknowledge({ auth, params, response }: HttpContext) {
@@ -56,6 +61,6 @@ export default class GatewaySecurityAlertsController {
     alert.acknowledgedAt = DateTime.now()
     await alert.save()
 
-    return response.ok({ message: 'Gateway security alert acknowledged.', alert })
+    return response.ok({ message: 'Gateway security alert acknowledged.', alert: alertResponse(alert) })
   }
 }

@@ -47,6 +47,7 @@ gateway_id=$(jq -er '.gateway.id' "$WORK/response.json")
 management_ip=$(jq -er '.gateway.managementIpAddress' "$WORK/response.json")
 format=$(jq -er '.vpn.format' "$WORK/response.json")
 profile_base64=$(jq -er '.vpn.contentBase64' "$WORK/response.json")
+
 case "$gateway_id" in ''|*[!0-9]*) exit 1 ;; esac
 case "$format" in openvpn) ;; *) exit 1 ;; esac
 printf '%s\n' "$management_ip" | awk -F. '
@@ -57,6 +58,16 @@ printf '%s\n' "$management_ip" | awk -F. '
 printf '%s' "$profile_base64" | busybox base64 -d > "$WORK/client.conf"
 grep -q '<cert>' "$WORK/client.conf"
 grep -q '<key>' "$WORK/client.conf"
+
+# Normalize the validated profile before the atomic install and enable below.
+awk '{
+  if ($1 == "remote" && $NF == "udp") {$NF = "udp4"}
+  else if ($1 == "remote" && $NF == "tcp-client") {$NF = "tcp4-client"}
+  else if ($1 == "proto" && $2 == "udp") {$2 = "udp4"}
+  else if ($1 == "proto" && $2 == "tcp-client") {$2 = "tcp4-client"}
+  print
+}' "$WORK/client.conf" > "$WORK/client.conf.rewritten"
+mv "$WORK/client.conf.rewritten" "$WORK/client.conf"
 
 OPENVPN_CONFIG=/etc/openvpn/client.conf
 MGMT_SCRIPT=/etc/init.d/S92mgmtip

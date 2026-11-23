@@ -73,8 +73,18 @@ export default class GatewayStatusJob {
       }
       while (!cycle.signal.aborted) {
         const gateways = await Gateway.query()
-          .select('id', 'management_ip_address', 'ssh_host_key_fingerprint')
-          .whereNotNull('management_ip_address')
+          .select(
+            'id',
+            'management_ip_address',
+            'ssh_host_key_fingerprint',
+            'vpn_provider',
+            'vpn_resources'
+          )
+          .where((query) => {
+            query
+              .whereNotNull('management_ip_address')
+              .orWhereRaw("vpn_resources ->> 'connectorId' <> ''")
+          })
           .where('id', '>', cursor)
           .orderBy('id', 'asc')
           .limit(this.batchSize)
@@ -118,7 +128,7 @@ export default class GatewayStatusJob {
             stats.checked++
             if (update.status === 'offline') stats.offline++
             try {
-              // Do not publish observations from an address changed during SSH.
+              // Discard observations if the management endpoint changed during the probe.
               if (!(await this.leases.publish(ownedLease, gateway, update))) lostLease()
             } catch {
               stats.writeErrors++

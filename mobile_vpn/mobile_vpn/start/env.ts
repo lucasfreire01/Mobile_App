@@ -44,6 +44,18 @@ export default await Env.create(new URL('../', import.meta.url), {
 
   // CloudConnexa
   VPN_PROVIDER: Env.schema.string.optional(),
+  GOOGLE_CLOUD_VPN_PROJECT: Env.schema.string.optional(),
+  GOOGLE_CLOUD_VPN_REGION: Env.schema.string.optional(),
+  GOOGLE_CLOUD_VPN_TUNNEL: Env.schema.string.optional(),
+  OCI_VPN_REGION: Env.schema.string.optional(),
+  OCI_VPN_CONNECTION_ID: Env.schema.string.optional(),
+  OCI_VPN_TUNNEL_ID: Env.schema.string.optional(),
+  AWS_CLIENT_VPN_ENDPOINT_ID: Env.schema.string.optional(),
+  AWS_CLIENT_VPN_REGION: Env.schema.string.optional(),
+AWS_CLIENT_VPN_CA_ARN: Env.schema.string.optional(),
+AWS_CLIENT_VPN_CRL_S3_URI: Env.schema.string.optional(),
+  AZURE_P2S_VPN_GATEWAY_RESOURCE_ID: Env.schema.string.optional(),
+  AZURE_P2S_VPN_LOOKUP_TIMEOUT_MS: Env.schema.number.optional(),
   EC2_OPENVPN_PROVISIONER: Env.schema.string.optional(),
   CLOUDCONNEXA_BASE_URL: Env.schema.string.optional({ format: 'url', tld: false }),
   CLOUDCONNEXA_CLIENT_ID: Env.schema.string.optional(),

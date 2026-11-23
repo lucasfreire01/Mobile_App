@@ -7,6 +7,7 @@ import db from '@adonisjs/lucid/services/db'
 
 const DEFAULT_ROTATIONS_LIMIT = 20
 const MAX_ROTATIONS_LIMIT = 100
+const MAX_PAGE = 10_000
 
 function parsePaginationParameter(value: unknown, fallback: number, maximum: number) {
   const parsed = Number(value)
@@ -21,7 +22,7 @@ function parsePaginationParameter(value: unknown, fallback: number, maximum: num
 export default class GatewaySshHostKeysController {
   async index({ params, request, response }: HttpContext) {
     const gateway = await Gateway.findOrFail(params.id)
-    const page = parsePaginationParameter(request.input('page'), 1, Number.MAX_SAFE_INTEGER)
+    const page = parsePaginationParameter(request.input('page'), 1, MAX_PAGE)
     const limit = parsePaginationParameter(
       request.input('limit'),
       DEFAULT_ROTATIONS_LIMIT,
@@ -37,7 +38,7 @@ export default class GatewaySshHostKeysController {
       .queryString({ limit })
 
     return response.ok({
-      rotations: rotations.all(),
+      rotations: rotations.all().map((rotation) => ({ id: rotation.id, reason: rotation.reason, createdAt: rotation.createdAt })),
       meta: rotations.getMeta(),
     })
   }
@@ -79,7 +80,7 @@ export default class GatewaySshHostKeysController {
 
     return response.ok({
       message: 'Gateway SSH host key fingerprint rotated.',
-      rotation,
+      rotation: { id: rotation.id, reason: rotation.reason, createdAt: rotation.createdAt },
     })
   }
 }

@@ -135,6 +135,7 @@ export default function GatewayDetailsScreen() {
   );
   const [operation, setOperation] = useState<NetworkOperation | null>(null);
   const [alerts, setAlerts] = useState<SecurityAlert[]>([]);
+  const [alertsError, setAlertsError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [applying, setApplying] = useState(false);
@@ -162,26 +163,39 @@ export default function GatewayDetailsScreen() {
       setError(null);
 
       try {
-        const request = async (path: string) => {
+        const request = async (
+          path: string,
+          fallback = "Não foi possível carregar o gateway.",
+        ) => {
           const response = await apiFetch(`${getApiUrl()}${path}`);
           const body = await response.json().catch(() => null);
 
           if (!response.ok) {
             throw new Error(
-              body?.errors?.[0]?.message ??
-                "Não foi possível carregar o gateway.",
+              body?.errors?.[0]?.message ?? fallback,
             );
           }
 
           return body;
         };
 
-        const [gatewayBody, ethernetBody, operationsBody, alertsBody] =
+        const [gatewayBody, ethernetBody, operationsBody, alertsResult] =
           await Promise.all([
             request(`/gateways/${id}`),
             request(`/gateways/${id}/ethernet`),
             request(`/gateways/${id}/network-operations?page=1&limit=1`),
-            request(`/gateways/${id}/security-alerts?page=1&limit=20`),
+            request(
+              `/gateways/${id}/security-alerts?page=1&limit=20`,
+              "Não foi possível carregar os alertas de segurança.",
+            )
+              .then((body) => ({ body, error: null }))
+              .catch((loadError: unknown) => ({
+                body: null,
+                error:
+                  loadError instanceof Error
+                    ? loadError.message
+                    : "Não foi possível carregar os alertas de segurança.",
+              })),
           ]);
 
         const savedEthernetConfig = ethernetBody.ethernetConfigs?.[0] ?? null;
@@ -194,7 +208,12 @@ export default function GatewayDetailsScreen() {
             : createEmptyEthernetDraft(),
         );
         setOperation(operationsBody.operations?.[0] ?? null);
-        setAlerts(alertsBody.alerts ?? []);
+        if (alertsResult.body) {
+          setAlerts(alertsResult.body.alerts ?? []);
+          setAlertsError(null);
+        } else {
+          setAlertsError(alertsResult.error);
+        }
       } catch (loadError) {
         setError(
           loadError instanceof Error
@@ -213,7 +232,6 @@ export default function GatewayDetailsScreen() {
 
   useEffect(() => {
     if (
-      error ||
       !operation ||
       !["pending", "applying"].includes(operation.status)
     ) {
@@ -222,7 +240,7 @@ export default function GatewayDetailsScreen() {
 
     const interval = setInterval(() => void loadGateway(false), 5_000);
     return () => clearInterval(interval);
-  }, [error, loadGateway, operation]);
+  }, [loadGateway, operation]);
 
   async function mutateGateway(action: "rename" | "delete") {
     if (!gateway || !token || gatewayMutation.current) return;
@@ -336,21 +354,19 @@ export default function GatewayDetailsScreen() {
       const payload = {
         mode: ethernetDraft.mode,
         dhcpFallbackEnabled: ethernetDraft.dhcpFallbackEnabled,
-        ...(ethernetDraft.staticIpAddress
+        ...(requiresStaticProfile && ethernetDraft.staticIpAddress
           ? { staticIpAddress: ethernetDraft.staticIpAddress }
           : {}),
         ...(ethernetDraft.staticPrefixLength
           ? { staticPrefixLength: prefixLength }
           : {}),
-        ...(ethernetDraft.staticGateway
+        ...(requiresStaticProfile && ethernetDraft.staticGateway
           ? { staticGateway: ethernetDraft.staticGateway }
           : {}),
         ...(ethernetDraft.primaryDns
           ? { primaryDns: ethernetDraft.primaryDns }
           : {}),
-        ...(ethernetDraft.secondaryDns
-          ? { secondaryDns: ethernetDraft.secondaryDns }
-          : {}),
+        secondaryDns: ethernetDraft.secondaryDns.trim() || null,
       };
       const endpoint = ethernetConfig
         ? `/gateways/${id}/ethernet/${ethernetConfig.id}`
@@ -769,6 +785,11 @@ export default function GatewayDetailsScreen() {
           <Text className="mb-3 text-lg font-bold text-slate-900">
             Alertas de segurança
           </Text>
+          {alertsError ? (
+            <Text accessibilityRole="alert" className="mb-3 text-sm text-red-800">
+              {alertsError}
+            </Text>
+          ) : null}
           {alerts.length ? (
             alerts.map((alert) => (
               <View className="mb-2 rounded-lg bg-red-50 p-3" key={alert.id}>
@@ -797,7 +818,7 @@ export default function GatewayDetailsScreen() {
                 </View>
               </View>
             ))
-          ) : (
+          ) : alertsError ? null : (
             <Text className="text-sm text-slate-600">
               Nenhum alerta registrado.
             </Text>

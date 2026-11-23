@@ -6,11 +6,15 @@ export function ScreenHeader({
   subtitle,
   onRefresh,
   refreshing = false,
+  backDisabled = false,
+  onBack,
 }: {
   title: string;
   subtitle: string;
   onRefresh?: () => void;
   refreshing?: boolean;
+  backDisabled?: boolean;
+  onBack?: () => void;
 }) {
   return (
     <View className="bg-brand-blueDark px-5 pb-6 pt-4 md:px-8">
@@ -34,10 +38,15 @@ export function ScreenHeader({
             <Pressable
               accessibilityRole="button"
               accessibilityLabel="Voltar"
-              onPress={() =>
-                router.canGoBack() ? router.back() : router.replace("/gateways")
-              }
-              className="min-h-12 min-w-12 items-center justify-center rounded-full border border-white/25 active:bg-white/10"
+              accessibilityState={{ disabled: backDisabled }}
+              disabled={backDisabled}
+              onPress={() => {
+                if (backDisabled) return;
+                if (onBack) { onBack(); return; }
+                if (router.canGoBack()) router.back();
+                else router.replace("/gateways");
+              }}
+              className={`min-h-12 min-w-12 items-center justify-center rounded-full border border-white/25 active:bg-white/10 ${backDisabled ? "opacity-40" : ""}`}
             >
               <Text className="text-xl leading-6 text-white">‹</Text>
             </Pressable>

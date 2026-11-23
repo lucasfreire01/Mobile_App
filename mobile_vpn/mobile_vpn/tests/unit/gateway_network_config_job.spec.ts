@@ -212,6 +212,86 @@ test.group('GatewayNetworkConfigJob', (group) => {
     assert.equal(operation.status, 'failed')
   })
 
+  for (const mode of ['static', 'dhcp'] as const) {
+    test(`fails a ${mode} address change before SSH when the management IP belongs to a VPN session`, async ({
+      assert,
+    }) => {
+      const gateway = await createGateway()
+      gateway.managementIpAddress = null
+      await gateway.save()
+      const operation = await createOperation(gateway.id, {
+        mode,
+        dhcpFallbackEnabled: mode === 'dhcp',
+        staticIpAddress: '10.42.0.200',
+        staticPrefixLength: 24,
+        staticGateway: '10.42.0.1',
+        primaryDns: '10.42.0.1',
+        secondaryDns: null,
+      })
+      const dependencies = createDependencies()
+      dependencies.vpnProvider = { ...dependencies.vpnProvider, managementAddressMode: 'session' }
+      const error = await captureException(() =>
+        new GatewayNetworkConfigJob(operation.id, PROCESSING_TOKEN, dependencies).run()
+      )
+
+      assert.equal(error.code, 'E_VPN_STATIC_MANAGEMENT_IP_UNSUPPORTED')
+      assert.deepEqual(dependencies.calls, ['lock.acquire', 'lock.release'])
+      await operation.refresh()
+      assert.equal(operation.status, 'failed')
+      assert.isNull(operation.previousPayload)
+    })
+
+    test(`fails a ${mode} address change before SSH when VPN routes are unsupported`, async ({
+      assert,
+    }) => {
+      const gateway = await createGateway()
+      gateway.vpnResources = { routeId: 'bound-route' }
+      await gateway.save()
+      const operation = await createOperation(gateway.id, {
+        mode,
+        dhcpFallbackEnabled: mode === 'dhcp',
+        staticIpAddress: '10.42.0.200',
+        staticPrefixLength: 24,
+        staticGateway: '10.42.0.1',
+        primaryDns: '10.42.0.1',
+        secondaryDns: null,
+      })
+      const dependencies = createDependencies()
+      dependencies.vpnProvider = {}
+      const error = await captureException(() =>
+        new GatewayNetworkConfigJob(operation.id, PROCESSING_TOKEN, dependencies).run()
+      )
+
+      assert.equal(error.code, 'E_VPN_ROUTE_UPDATE_UNSUPPORTED')
+      assert.deepEqual(dependencies.calls, ['lock.acquire', 'lock.release'])
+      await operation.refresh()
+      assert.equal(operation.status, 'failed')
+      assert.isNull(operation.previousPayload)
+    })
+  }
+
+  test('fails a static address change before SSH when the legacy route is missing', async ({
+    assert,
+  }) => {
+    const gateway = await createGateway()
+    const operation = await createOperation(gateway.id, {
+      mode: 'static',
+      dhcpFallbackEnabled: false,
+      staticIpAddress: '10.42.0.200',
+      staticPrefixLength: 24,
+      staticGateway: '10.42.0.1',
+      primaryDns: null,
+      secondaryDns: null,
+    })
+    const dependencies = createDependencies()
+    const error = await captureException(() =>
+      new GatewayNetworkConfigJob(operation.id, PROCESSING_TOKEN, dependencies).run()
+    )
+
+    assert.equal(error.code, 'E_GATEWAY_NO_IP_SERVICE')
+    assert.deepEqual(dependencies.calls, ['lock.acquire', 'lock.release'])
+  })
+
   test('applies DHCP and marks its operation as applied', async ({ assert }) => {
     const gateway = await createGateway()
     const operation = await createOperation(gateway.id, {

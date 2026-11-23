@@ -16,6 +16,17 @@ export const createGatewayValidator = vine.create({
     .optional(),
 })
 
+export const attachGatewayValidator = vine.create({
+  name: vine.string().trim().minLength(1).maxLength(100),
+  providerId: vine.string().regex(/^[a-z][a-z0-9_-]{0,63}$/),
+  reference: vine.string().trim().minLength(1).maxLength(255),
+  managementIpAddress: vine.string().ipAddress().optional(),
+  sshHostKeyFingerprint: vine
+    .string()
+    .trim()
+    .regex(/^SHA256:[A-Za-z0-9+/]{43}=?$/),
+})
+
 export const updateGatewayValidator = vine.create({
   name: vine.string().trim().minLength(1).maxLength(100),
   gatewayEui: vine

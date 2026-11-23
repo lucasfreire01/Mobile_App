@@ -5,9 +5,27 @@ import env from '#start/env'
 import WorkerHeartbeat from '#models/worker_heartbeat'
 import { GATEWAY_NETWORK_OPERATIONS_WORKER } from '#services/worker_heartbeat_service'
 import { SSH_HOST_KEY_MISMATCH_ALERT } from '#services/gateway_security_alert_service'
+import SharedCacheService from '#services/shared_cache_service'
+
+type HealthPayload = {
+  status: string
+  queue: Record<string, number | null>
+  worker: Record<string, string | number | null>
+}
+let cachedHealth: { expiresAt: number; payload: HealthPayload } | null = null
 
 export default class QueueHealthsController {
   async show({ response }: HttpContext) {
+    const sharedCache = new SharedCacheService()
+    const shared = await sharedCache.get<HealthPayload>('health:queue')
+    if (shared) {
+      response.header('Cache-Control', 'private, max-age=5')
+      return response.ok(shared)
+    }
+    if (cachedHealth && cachedHealth.expiresAt > Date.now()) {
+      response.header('Cache-Control', 'private, max-age=5')
+      return response.ok(cachedHealth.payload)
+    }
     const maxPendingAgeSeconds = env.get('QUEUE_HEALTH_MAX_PENDING_AGE_SECONDS', 300)
     const maxWorkerAgeSeconds = env.get('QUEUE_HEALTH_MAX_WORKER_AGE_SECONDS', 60)
     const hostKeyMismatchWindowSeconds = env.get(
@@ -98,7 +116,7 @@ export default class QueueHealthsController {
         ? 'degraded'
         : 'ok'
 
-    return response.ok({
+    const payload: HealthPayload = {
       status,
       queue: {
         pending,
@@ -115,6 +133,10 @@ export default class QueueHealthsController {
         lastSeenAt: workerHeartbeat?.lastSeenAt.toISO() ?? null,
         ageSeconds: workerAgeSeconds,
       },
-    })
+    }
+    cachedHealth = { expiresAt: Date.now() + 5_000, payload }
+    await sharedCache.put('health:queue', payload, 5_000)
+    response.header('Cache-Control', 'private, max-age=5')
+    return response.ok(payload)
   }
 }

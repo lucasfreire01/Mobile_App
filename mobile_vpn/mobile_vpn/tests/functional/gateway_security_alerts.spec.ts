@@ -53,7 +53,7 @@ test.group('Gateway security alerts API', (group) => {
   }
 
   test('lists and acknowledges a gateway security alert', async ({ client, assert }) => {
-    const { token, user } = await login(client)
+    const { token } = await login(client)
     const gateway = await Gateway.create({
       name: 'gateway-security-alert-test',
       managementIpAddress: '10.42.0.126',
@@ -76,8 +76,8 @@ test.group('Gateway security alerts API', (group) => {
 
     acknowledgeResponse.assertStatus(200)
     assert.equal(acknowledgeResponse.body().alert.status, 'acknowledged')
-    assert.equal(acknowledgeResponse.body().alert.acknowledgedByUserId, user.id)
-    assert.equal(acknowledgeResponse.body().alert.acknowledgedByEmail, user.email)
+    assert.notProperty(acknowledgeResponse.body().alert, 'acknowledgedByUserId')
+    assert.notProperty(acknowledgeResponse.body().alert, 'acknowledgedByEmail')
     assert.isString(acknowledgeResponse.body().alert.acknowledgedAt)
   })
 })

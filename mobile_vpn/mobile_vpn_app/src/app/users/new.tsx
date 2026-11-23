@@ -27,6 +27,14 @@ export default function NewUserScreen() {
   const [createdEmail, setCreatedEmail] = useState<string | null>(null);
 
   async function createUser() {
+    if (!password.trim()) {
+      setError("Informe a senha.");
+      return;
+    }
+    if (!passwordConfirmation.trim()) {
+      setError("Confirme a senha.");
+      return;
+    }
     if (password !== passwordConfirmation) {
       setError("As senhas não conferem.");
       return;

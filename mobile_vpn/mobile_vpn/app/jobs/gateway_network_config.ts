@@ -1,6 +1,6 @@
 import Gateway from '#models/gateway'
 import { resolveVpnProvider, gatewayVpnResources } from '#services/vpn/registry'
-import type { VpnProvider } from '#services/vpn/types'
+import type { ConfiguredVpnProvider } from '#services/vpn/types'
 import GatewaySshService from '#services/gateway_ssh_service'
 import { STATIC_ROLLBACK_TIMEOUT_SECONDS } from '#services/gateway_network_command_builder'
 import { Exception } from '@adonisjs/core/exceptions'
@@ -46,7 +46,7 @@ export type GatewayNetworkConfigJobDependencies = {
     | 'waitForConnection'
     | 'getEthernetConfig'
   >
-  vpnProvider?: Pick<VpnProvider, 'updateRoutes'>
+  vpnProvider?: Pick<ConfiguredVpnProvider, 'managementAddressMode' | 'updateRoutes'>
 }
 
 function parseGatewayNetworkConfigPayload(payload: unknown): GatewayNetworkConfigPayload | null {
@@ -130,6 +130,37 @@ export default class GatewayNetworkConfigJob {
         this.dependencies.vpnProvider ?? (await resolveVpnProvider(gateway.vpnProvider))
       const routeId = gatewayVpnResources(gateway).routeId
       const sshService = this.dependencies.gatewaySshService ?? new GatewaySshService()
+
+      if (
+        vpnProvider.managementAddressMode === 'session' &&
+        (payload.mode === 'static' || payload.dhcpFallbackEnabled)
+      ) {
+        throw new Exception('This LAN operation requires a static VPN management address.', {
+          status: 422,
+          code: 'E_VPN_STATIC_MANAGEMENT_IP_UNSUPPORTED',
+        })
+      }
+
+      let updateRoutes: ((addresses: string[]) => Promise<void>) | undefined
+      if (
+        (payload.mode === 'static' || payload.dhcpFallbackEnabled) &&
+        payload.staticIpAddress &&
+        gateway.managementIpAddress !== payload.staticIpAddress
+      ) {
+        if (!vpnProvider.updateRoutes) {
+          throw new Exception('The bound VPN provider does not support updating gateway routes.', {
+            status: 422,
+            code: 'E_VPN_ROUTE_UPDATE_UNSUPPORTED',
+          })
+        }
+        if (!routeId) {
+          throw new Exception('Gateway has no VPN route resource.', {
+            status: 422,
+            code: 'E_GATEWAY_NO_IP_SERVICE',
+          })
+        }
+        updateRoutes = vpnProvider.updateRoutes.bind(vpnProvider, routeId)
+      }
       if (operation.previousPayload === null) {
         const config = await sshService.getEthernetConfig(gateway)
 
@@ -163,9 +194,7 @@ export default class GatewayNetworkConfigJob {
           // it. After DHCP is unavailable, the backend cannot add a route via
           // the gateway itself anymore.
           const currentAddress = sshService.ensureConnectionAddress(gateway)
-          if (routeId && currentAddress !== payload.staticIpAddress) {
-            await vpnProvider.updateRoutes(routeId, [currentAddress, payload.staticIpAddress])
-          }
+          await updateRoutes?.([currentAddress, payload.staticIpAddress])
 
           await sshService.configureDhcpFallback(gateway, {
             ipAddress: payload.staticIpAddress,
@@ -205,16 +234,7 @@ export default class GatewayNetworkConfigJob {
       const currentAddress = sshService.ensureConnectionAddress(gateway)
       const nextAddress = payload.staticIpAddress
 
-      if (currentAddress !== nextAddress) {
-        if (!routeId) {
-          throw new Exception('Gateway has no VPN route resource.', {
-            status: 422,
-            code: 'E_GATEWAY_NO_IP_SERVICE',
-          })
-        }
-
-        await vpnProvider.updateRoutes(routeId, [currentAddress, nextAddress])
-      }
+      await updateRoutes?.([currentAddress, nextAddress])
 
       const rollbackToken = await sshService.armStaticRollback(gateway)
       staticRollbackArmed = true
@@ -241,9 +261,7 @@ export default class GatewayNetworkConfigJob {
       gateway.lastSeenAt = DateTime.now()
       await gateway.save()
 
-      if (routeId && currentAddress !== nextAddress) {
-        await vpnProvider.updateRoutes(routeId, [nextAddress])
-      }
+      await updateRoutes?.([nextAddress])
 
       await this.markOperationAsApplied(operation)
 

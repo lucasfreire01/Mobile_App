@@ -9,6 +9,7 @@ import {
 } from "react";
 import { Platform } from "react-native";
 import { getApiUrl } from "../config/api";
+import { getApiErrorMessage } from "../lib/api-error";
 import { fetchWithTimeout, revokeAccessToken } from "../lib/fetch-with-timeout";
 
 const SESSION_KEY = "browan.session";
@@ -90,9 +91,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
           const body = await response.json().catch(() => null);
 
           if (!response.ok || !body?.data?.token) {
-            const message =
-              body?.errors?.[0]?.message ?? "Não foi possível entrar.";
-            throw new Error(message);
+            throw new Error(getApiErrorMessage(body, "Não foi possível entrar."));
           }
 
           await sessionStorage.setItem(

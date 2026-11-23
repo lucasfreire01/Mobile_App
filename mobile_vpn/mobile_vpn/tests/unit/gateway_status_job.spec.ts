@@ -201,6 +201,59 @@ test.group('Bounded gateway status monitoring', (group) => {
     assert.equal(entry.wanIpAddress, '192.0.2.1')
   })
 
+  test('probes a gateway with a VPN connector and no stored management IP', async ({ assert }) => {
+    const entry = await Gateway.create({
+      name: 'session-monitor',
+      managementIpAddress: null,
+      vpnProvider: 'session_test',
+      vpnResources: { connectorId: 'connector' },
+      sshHostKeyFingerprint: 'SHA256:session-host',
+      status: 'offline',
+    })
+    await Gateway.create({ name: 'unconfigured-monitor', managementIpAddress: null })
+    const probed: number[] = []
+    const job = new GatewayStatusJob({
+      probe: async (gateway) => {
+        probed.push(gateway.id)
+        assert.equal(gateway.vpnProvider, 'session_test')
+        assert.deepEqual(gateway.vpnResources, { connectorId: 'connector' })
+        assert.equal(gateway.sshHostKeyFingerprint, 'SHA256:session-host')
+        return { wanIpAddress: '192.0.2.9' }
+      },
+    })
+
+    await job.run()
+    await entry.refresh()
+    assert.deepEqual(probed, [entry.id])
+    assert.equal(entry.status, 'online')
+    assert.equal(entry.wanIpAddress, '192.0.2.9')
+    assert.isNull(entry.managementIpAddress)
+  })
+
+  test('discards an observation when the VPN connector changes during its probe', async ({
+    assert,
+  }) => {
+    const entry = await Gateway.create({
+      name: 'session-monitor',
+      managementIpAddress: null,
+      vpnProvider: 'session_test',
+      vpnResources: { connectorId: 'previous-connector' },
+      status: 'offline',
+    })
+    const job = new GatewayStatusJob({
+      probe: async () => {
+        await entry.merge({ vpnResources: { connectorId: 'new-connector' } }).save()
+        return { wanIpAddress: '192.0.2.9' }
+      },
+    })
+
+    await job.run()
+    await entry.refresh()
+    assert.deepEqual(entry.vpnResources, { connectorId: 'new-connector' })
+    assert.equal(entry.status, 'offline')
+    assert.isNull(entry.wanIpAddress)
+  })
+
   test('rejects unsafe configuration values', ({ assert }) => {
     for (const concurrency of [0, -1, 1.5, 21])
       assert.throws(() => new GatewayStatusJob({ concurrency }), /monitoring limit/)

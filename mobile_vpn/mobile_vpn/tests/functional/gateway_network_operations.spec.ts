@@ -74,6 +74,8 @@ test.group('Gateway network operations API', (group) => {
     assert.equal(response.body().operation.action, 'apply_dhcp')
     assert.equal(response.body().operation.status, 'pending')
     assert.equal(response.body().operation.attempts, 0)
+    assert.notProperty(response.body().operation, 'payload')
+    assert.notProperty(response.body().operation, 'requestedByEmail')
 
     const operation = await GatewayNetworkOperation.findOrFail(response.body().operation.id)
     assert.equal(operation.status, 'pending')
@@ -176,14 +178,8 @@ test.group('Gateway network operations API', (group) => {
     )
     const newestOperation = response.body().operations[0]
     assert.equal(newestOperation.requestedByEmail, 'operator@example.test')
-    assert.deepEqual(newestOperation.payload, {
-      mode: 'static',
-      staticIpAddress: '10.42.0.200',
-    })
-    assert.deepEqual(newestOperation.previousPayload, {
-      source: 'gateway_device',
-      config: "network.wan.proto='dhcp'",
-    })
+    assert.notProperty(newestOperation, 'payload')
+    assert.notProperty(newestOperation, 'previousPayload')
     assert.notProperty(newestOperation, 'processingToken')
     assert.notProperty(newestOperation, 'processingExpiresAt')
     assert.equal(response.body().meta.total, 2)

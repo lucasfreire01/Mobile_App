@@ -14,6 +14,7 @@ type Action = 'createGateway' | 'getProfile' | 'deleteGateway' | 'updateRoutes'
  */
 export default class Ec2OpenvpnProvider implements VpnProvider {
   readonly id = 'ec2_openvpn'
+  readonly profileFormats = ['openvpn'] as const
   private readonly provisioner: string
 
   constructor() {

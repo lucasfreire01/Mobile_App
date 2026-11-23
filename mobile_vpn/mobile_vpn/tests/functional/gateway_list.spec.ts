@@ -53,6 +53,11 @@ test.group('Paginated gateway list', (group) => {
     const gateways = await createGateways(23)
     const first = await client.get('/api/v1/gateways').header('authorization', auth)
     first.assertStatus(200)
+    for (const gateway of listBody(first).gatewaysList) {
+      for (const field of ['vpnResources', 'ccNetworkId', 'ccConnectorId', 'ccIpServiceId', 'sshHostKeyFingerprint', 'networkLockToken']) {
+        assert.notProperty(gateway, field)
+      }
+    }
     assert.deepEqual(
       listBody(first).gatewaysList.map((g: { id: number }) => g.id),
       gateways.slice(0, 20).map((g) => g.id)

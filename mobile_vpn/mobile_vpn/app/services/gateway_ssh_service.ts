@@ -17,6 +17,7 @@ import { readFileSync } from 'node:fs'
 import { Client } from 'ssh2'
 import { isIP } from 'node:net'
 import { ensureAllowedSshAddress } from '#services/gateway_ssh_address_policy'
+import { gatewayVpnResources, resolveVpnProvider } from '#services/vpn/registry'
 
 export type {
   DhcpFallbackSettings,
@@ -82,10 +83,32 @@ export default class GatewaySshService {
     return gateway.sshHostKeyFingerprint
   }
 
-  async connect(gateway: Gateway): Promise<Client> {
-    const host = this.ensureConnectionAddress(gateway)
+  private async resolveConnectionAddress(gateway: Gateway, signal?: AbortSignal): Promise<string> {
+    if (signal?.aborted) throw new Error('Gateway monitoring cancelled')
+    const provider = gateway.vpnProvider ? await resolveVpnProvider(gateway.vpnProvider) : undefined
+    if (!provider?.resolveManagementAddress) return this.ensureConnectionAddress(gateway)
 
-    return this.connectToAddress(host, this.getExpectedHostKeyFingerprint(gateway))
+    const connectorId = gatewayVpnResources(gateway).connectorId
+    if (!connectorId) {
+      throw new Exception('Gateway has no VPN connector', {
+        status: 422,
+        code: 'E_GATEWAY_NO_CONNECTOR',
+      })
+    }
+
+    const address = await provider.resolveManagementAddress(connectorId, signal)
+    if (!address) {
+      throw new Exception('Gateway has no active VPN management address.', {
+        status: 503,
+        code: 'E_GATEWAY_VPN_SESSION_UNAVAILABLE',
+      })
+    }
+    return ensureAllowedSshAddress(address)
+  }
+
+  async connect(gateway: Gateway, signal?: AbortSignal): Promise<Client> {
+    const host = await this.resolveConnectionAddress(gateway, signal)
+    return this.connectToAddress(host, this.getExpectedHostKeyFingerprint(gateway), signal)
   }
 
   async connectToAddress(
@@ -152,11 +175,7 @@ export default class GatewaySshService {
     gateway: Gateway,
     signal: AbortSignal
   ): Promise<{ wanIpAddress: string | null }> {
-    const client = await this.connectToAddress(
-      this.ensureConnectionAddress(gateway),
-      this.getExpectedHostKeyFingerprint(gateway),
-      signal
-    )
+    const client = await this.connect(gateway, signal)
     try {
       const wanIpAddress = await new Promise<string | null>((resolve) => {
         let settled = false
@@ -209,7 +228,7 @@ export default class GatewaySshService {
   private async runCommand(gateway: Gateway, command: string, errorCode: string): Promise<string> {
     return this.runCommandAtAddress(
       gateway,
-      this.ensureConnectionAddress(gateway),
+      await this.resolveConnectionAddress(gateway),
       command,
       errorCode
     )

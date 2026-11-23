@@ -113,6 +113,12 @@ export default defineConfig({
     { pattern: 'scripts/database-roles.mjs', reloadServer: false },
     { pattern: 'scripts/provision-database-runtime.mjs', reloadServer: false },
     { pattern: 'scripts/with-db-admin.mjs', reloadServer: false },
+    { pattern: 'scripts/gateway_lan_bridge.ts', reloadServer: false },
+    { pattern: 'scripts/bridge_pairing_relay.ts', reloadServer: false },
+    { pattern: 'scripts/validate_bridge_installation.ts', reloadServer: false },
+    { pattern: 'scripts/package_gateway_bridge_linux.sh', reloadServer: false },
+    { pattern: 'scripts/install_gateway_bridge_linux.sh', reloadServer: false },
+    { pattern: 'scripts/install_gateway_bridge_from_stdin.sh', reloadServer: false },
   ],
 
   hooks: {

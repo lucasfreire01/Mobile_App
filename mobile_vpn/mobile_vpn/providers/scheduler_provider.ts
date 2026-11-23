@@ -1,6 +1,7 @@
 import type { ApplicationService } from '@adonisjs/core/types'
 import { SimpleIntervalJob, ToadScheduler, AsyncTask } from 'toad-scheduler'
 import GatewayStatusJob from '#jobs/gateway_status_job'
+import CloudConnexaMigrationRunner from '#services/cloud_connexa_migration_runner'
 import logger from '@adonisjs/core/services/logger'
 
 export default class SchedulerProvider {
@@ -8,6 +9,41 @@ export default class SchedulerProvider {
 
   async ready() {
     const scheduler = new ToadScheduler()
+
+    const migrationRunner = new CloudConnexaMigrationRunner()
+    const migrationTask = new AsyncTask(
+      'cloudconnexa-account-migration',
+      async () => {
+        await migrationRunner.run()
+      },
+      (error: Error) =>
+        logger.error(
+          { event: 'cloudconnexa_account_migration_failed', errorName: error.name },
+          'CloudConnexa account migration failed'
+        )
+    )
+    void migrationRunner
+      .run()
+      .then((result) => {
+        logger.info(
+          { event: 'cloudconnexa_account_migration_finished', ...result },
+          'CloudConnexa account migration finished'
+        )
+      })
+      .catch((error: unknown) => {
+        logger.error(
+          {
+            event: 'cloudconnexa_account_migration_failed',
+            errorName: error instanceof Error ? error.name : 'UnknownError',
+          },
+          'CloudConnexa account migration failed'
+        )
+        scheduler.addSimpleIntervalJob(
+          new SimpleIntervalJob({ minutes: 5, runImmediately: false }, migrationTask, {
+            preventOverrun: true,
+          })
+        )
+      })
 
     const gatewayStatusJob = new GatewayStatusJob()
     const task = new AsyncTask(

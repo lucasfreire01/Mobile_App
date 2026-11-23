@@ -1,6 +1,7 @@
 import { test } from '@japa/runner'
 import { Exception } from '@adonisjs/core/exceptions'
 import db from '@adonisjs/lucid/services/db'
+import limiter from '@adonisjs/limiter/services/main'
 import Gateway from '#models/gateway'
 import User from '#models/user'
 import CloudConnexaService from '#services/cloud_connexa_service'
@@ -21,6 +22,7 @@ test.group('Atomic gateway provisioning', (group) => {
   const originalCreate = CloudConnexaService.prototype.createGatewayResources
   const originalDelete = CloudConnexaService.prototype.deleteNetwork
   group.each.setup(async () => {
+    await limiter.clear(['memory'])
     await db.from('gateway_ip_reservations').delete()
     await Gateway.query().delete()
     const user = await User.create({
@@ -113,6 +115,52 @@ test.group('Atomic gateway provisioning', (group) => {
       () => Gateway.create({ name: 'duplicate', managementIpAddress: '10.42.0.40' }),
       /duplicate key/
     )
+  })
+
+  test('reserves a normalized gateway name before provisioning and rejects duplicate renames', async ({
+    client,
+    assert,
+  }) => {
+    let entered!: () => void
+    let release!: () => void
+    const started = new Promise<void>((resolve) => { entered = resolve })
+    const gate = new Promise<void>((resolve) => { release = resolve })
+    CloudConnexaService.prototype.createGatewayResources = async (_name, _ip, onCreated) => {
+      created++
+      await onCreated?.('first-network')
+      entered()
+      await gate
+      return { networkId: 'first-network', connectorId: 'connector', ipServiceId: 'service' }
+    }
+
+    const first = new GatewayProvisioningService().create({ name: ' Central ' })
+    await started
+    const other = await Gateway.create({ name: 'Other' })
+    const create = () => client.post('/api/v1/gateways').header('authorization', authorization)
+      .json({ name: ' CENTRAL ' })
+    const rename = () => client.put(`/api/v1/gateways/${other.id}`)
+      .header('authorization', authorization).json({ name: 'central' })
+    try {
+      const duplicates = [await create(), await rename()]
+      for (const duplicate of duplicates) duplicate.assertStatus(409)
+      assert.equal(created, 1)
+    } finally {
+      release()
+    }
+    const gateway = await first
+    assert.equal(gateway.name, 'Central')
+    const duplicates = [await create(), await rename()]
+    for (const duplicate of duplicates) duplicate.assertStatus(409)
+    assert.equal(created, 1)
+    assert.equal(await gatewayCount(), 2)
+  })
+
+  test('can update a legacy gateway without renaming it', async ({ client }) => {
+    await Gateway.create({ name: ' Legacy ' })
+    const gateway = await Gateway.create({ name: 'Legacy' })
+    const response = await client.put(`/api/v1/gateways/${gateway.id}`)
+      .header('authorization', authorization).json({ name: 'Legacy', location: 'Updated' })
+    response.assertStatus(200)
   })
 
   test('returns 409 for an update to an occupied or reserved IP', async ({ client }) => {

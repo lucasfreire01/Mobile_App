@@ -6,6 +6,7 @@ import GatewaySshService from '#services/gateway_ssh_service'
 import GatewayNetworkOperation from '#models/gateway_network_operation'
 import { DateTime } from 'luxon'
 import { ensureAllowedSshAddress } from '#services/gateway_ssh_address_policy'
+import GatewayAdvisoryLockService from '#services/gateway_advisory_lock_service'
 
 const ACTIVE_OPERATION_INDEX = 'gateway_network_operations_one_active_per_gateway'
 
@@ -61,15 +62,17 @@ export default class GatewayEthernetsController {
 
   async hostname({ params, response }: HttpContext) {
     const gateway = await Gateway.findOrFail(params.id)
-    const gatewaySshService = new GatewaySshService()
-    const hostname = await gatewaySshService.getHostname(gateway)
+    const hostname = await new GatewayAdvisoryLockService().run(gateway.id, () =>
+      new GatewaySshService().getHostname(gateway)
+    )
     return response.ok({ hostname })
   }
 
   async device({ params, response }: HttpContext) {
     const gateway = await Gateway.findOrFail(params.id)
-    const gatewaySshService = new GatewaySshService()
-    const config = await gatewaySshService.getEthernetConfig(gateway)
+    const config = await new GatewayAdvisoryLockService().run(gateway.id, () =>
+      new GatewaySshService().getEthernetConfig(gateway)
+    )
 
     return response.ok({ config })
   }
@@ -129,7 +132,7 @@ export default class GatewayEthernetsController {
 
     return response.accepted({
       message: 'Ethernet configuration queued.',
-      operation,
+      operation: { id: operation.id, gatewayId: operation.gatewayId, action: operation.action, status: operation.status, attempts: operation.attempts, errorCode: operation.errorCode, errorMessage: null, createdAt: operation.createdAt },
     })
   }
 

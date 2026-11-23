@@ -57,17 +57,17 @@ test.group('Gateway SSH host key rotation API', (group) => {
       })
 
     response.assertStatus(200)
-    assert.equal(response.body().rotation.gatewayId, gateway.id)
-    assert.equal(response.body().rotation.requestedByUserId, user.id)
-    assert.equal(response.body().rotation.requestedByEmail, user.email)
-    assert.equal(response.body().rotation.previousFingerprint, ORIGINAL_FINGERPRINT)
-    assert.equal(response.body().rotation.nextFingerprint, ROTATED_FINGERPRINT)
+    assert.notProperty(response.body().rotation, 'gatewayId')
+    assert.notProperty(response.body().rotation, 'requestedByEmail')
+    assert.notProperty(response.body().rotation, 'previousFingerprint')
+    assert.notProperty(response.body().rotation, 'nextFingerprint')
     assert.equal(response.body().rotation.reason, 'Gateway hardware replacement')
 
     await gateway.refresh()
     assert.equal(gateway.sshHostKeyFingerprint, ROTATED_FINGERPRINT)
 
     const rotation = await GatewaySshHostKeyRotation.findOrFail(response.body().rotation.id)
+    assert.equal(rotation.requestedByUserId, user.id)
     assert.equal(rotation.previousFingerprint, ORIGINAL_FINGERPRINT)
     assert.equal(rotation.nextFingerprint, ROTATED_FINGERPRINT)
   })

@@ -1,3 +1,4 @@
+import { isIPv4 } from 'node:net'
 import { Exception } from '@adonisjs/core/exceptions'
 
 export type StaticEthernetSettings = {
@@ -152,7 +153,17 @@ export const prefixLengthToNetmask = (prefixLength: number) => {
 
 export const buildDhcpEthernetCommand = () => ETHERNET_DHCP_COMMAND
 
+function ensureIpv4Profile(settings: StaticEthernetSettings) {
+  if (!isIPv4(settings.ipAddress) || !isIPv4(settings.gateway)) {
+    throw new Exception('The static address and gateway must be IPv4 addresses.', {
+      status: 422,
+      code: 'E_GATEWAY_STATIC_IPV4_REQUIRED',
+    })
+  }
+}
+
 export const buildStaticEthernetCommand = (settings: StaticEthernetSettings) => {
+  ensureIpv4Profile(settings)
   const netmask = prefixLengthToNetmask(settings.prefixLength)
   const commands = [
     buildWriteFileCommand(
@@ -193,6 +204,7 @@ export const buildStaticEthernetCommand = (settings: StaticEthernetSettings) => 
 }
 
 export const buildDhcpFallbackCommand = (settings: DhcpFallbackSettings) => {
+  ensureIpv4Profile(settings)
   const commands = [
     buildWriteFileCommand(DHCP_FALLBACK_SCRIPT_PATH, DHCP_FALLBACK_SCRIPT),
     `chmod 700 ${quoteForShell(DHCP_FALLBACK_SCRIPT_PATH)}`,
@@ -203,20 +215,13 @@ export const buildDhcpFallbackCommand = (settings: DhcpFallbackSettings) => {
     `uci set gateway_fallback.wan.netmask=${quoteForShell(prefixLengthToNetmask(settings.prefixLength))}`,
     `uci set gateway_fallback.wan.gateway=${quoteForShell(settings.gateway)}`,
     `uci set gateway_fallback.wan.primary_dns=${quoteForShell(settings.primaryDns ?? '')}`,
+    `uci set gateway_fallback.wan.secondary_dns=${quoteForShell(settings.secondaryDns ?? '')}`,
     `uci set gateway_fallback.wan.failure_threshold='${DHCP_FALLBACK_FAILURE_THRESHOLD}'`,
     `uci set gateway_fallback.wan.cooldown_seconds='${DHCP_FALLBACK_COOLDOWN_SECONDS}'`,
     'uci commit gateway_fallback',
     `(grep -F -q ${quoteForShell(DHCP_FALLBACK_SCRIPT_PATH)} /etc/crontabs/root || echo ${quoteForShell(DHCP_FALLBACK_CRON_LINE)} >> /etc/crontabs/root)`,
     '{ (/etc/init.d/S21cron restart) >/dev/null 2>&1 & :; }',
   ]
-
-  if (settings.secondaryDns) {
-    commands.splice(
-      9,
-      0,
-      `uci set gateway_fallback.wan.secondary_dns=${quoteForShell(settings.secondaryDns)}`
-    )
-  }
 
   return commands.join(' && ')
 }
