@@ -9,15 +9,22 @@ import { readFileSync } from 'node:fs'
 import { BridgePairingRelay, prepareBridgeInstallation } from './bridge_pairing_relay.ts'
 import { fileURLToPath } from 'node:url'
 
-type LocalIPv4Interface = { name: string; address: string }
-const interfaces: LocalIPv4Interface[] = Object.entries(networkInterfaces()).flatMap(
+type LocalIPv4Interface = { name: string; address: string; netmask: string }
+function readInterfaces(): LocalIPv4Interface[] {
+  return Object.entries(networkInterfaces()).flatMap(
   ([name, records]) =>
     (records ?? [])
       .filter(
-        (record) => !record.internal && record.family === 'IPv4' && net.isIPv4(record.address)
+        (record) =>
+          !record.internal &&
+          record.family === 'IPv4' &&
+          net.isIPv4(record.address) &&
+          net.isIPv4(record.netmask)
       )
-      .map((record) => ({ name, address: record.address }))
-)
+      .map((record) => ({ name, address: record.address, netmask: record.netmask }))
+  )
+}
+const interfaces = readInterfaces()
 const ignoredInterface =
   /virtual|loopback|bluetooth|tailscale|zerotier|vpn|tunnel|docker|podman|wsl|hyper-v|vethernet|bridge/i
 function selectInterface(label: string, pattern: RegExp) {
@@ -46,8 +53,9 @@ const [bind, ethernet] =
         selectInterface('Ethernet', /(^en[opsx]|^eth\d|ethernet|local area connection)/i),
       ]
 if (!net.isIPv4(bind) || !net.isIPv4(ethernet)) throw new Error('IPv4 required')
-const prefix = ethernet.split('.').slice(0, 3).join('.')
 const wifiPrefix = bind.split('.').slice(0, 3).join('.') + '.'
+const MAX_HOSTS_PER_NETWORK = 4096
+const MAX_CANDIDATES = 8192
 const devices = new Map<
   string,
   { ip: string; model: string; mac: string; serial: string; port: number }
@@ -151,9 +159,24 @@ function identity(ip: string): Promise<Record<string, unknown> | null> {
   })
 }
 export async function scan() {
-  const queue = Array.from({ length: 254 }, (_, i) => `${prefix}.${i + 1}`).filter(
-    (ip) => ip !== ethernet
-  )
+  const networks = readInterfaces()
+    .filter((item) => !ignoredInterface.test(item.name))
+    .map(({ address, netmask }) => {
+      const ip = address.split('.').map(Number)
+      const mask = netmask.split('.').map(Number)
+      const network = ip.map((octet, index) => octet & mask[index])
+      const hostCount = Math.min(
+        MAX_HOSTS_PER_NETWORK,
+        2 ** (32 - mask.reduce((value, octet) => value + octet.toString(2).split('0').join('').length, 0))
+      )
+      return { network, hostCount }
+    })
+  const queue = networks.flatMap(({ network, hostCount }) =>
+    Array.from({ length: hostCount }, (_, offset) => {
+      const value = network.reduce((result, octet, index) => result + (octet << (24 - index * 8)), offset)
+      return [24, 16, 8, 0].map((shift) => (value >>> shift) & 255).join('.')
+    })
+  ).filter((ip, index, ips) => ip !== ethernet && index < MAX_CANDIDATES && ips.indexOf(ip) === index)
   const seen = new Set<string>()
   await Promise.all(
     Array.from({ length: 16 }, async () => {
