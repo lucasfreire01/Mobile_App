@@ -15,7 +15,7 @@ Unblock-File .\saganexus-gateway-bridge-windows-x64.exe
  .\saganexus-gateway-bridge-windows-x64.exe
 ```
 
-A instalação é por usuário, sem elevação, e registra uma tarefa que inicia a ponte quando esse usuário entra no Windows. A ponte não contém credenciais e detecta as interfaces Wi-Fi e Ethernet pelos nomes, listando os gateways encontrados. O celular e o Wi-Fi do notebook precisam estar na mesma rede local. Se o Firewall do Windows bloquear a descoberta, permita TCP 8787 e TCP 8800–8863 na rede privada.
+A instalação pede elevação uma vez para habilitar o compartilhamento de internet entre a interface com rota padrão e a Ethernet do gateway, além de criar as regras privadas do Firewall para TCP 8787 e TCP 8800–8863. A ponte não contém credenciais nem IP de gateway: ela detecta as interfaces Wi-Fi e Ethernet e varre as sub-redes atuais. O celular e o Wi-Fi do notebook precisam estar na mesma rede local.
 
 O cliente OpenSSH do Windows precisa estar instalado, incluindo `ssh.exe` e `ssh-keyscan.exe`; o instalador verifica isso antes de alterar a instalação existente.
 

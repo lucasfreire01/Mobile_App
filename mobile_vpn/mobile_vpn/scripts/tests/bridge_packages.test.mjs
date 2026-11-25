@@ -118,3 +118,15 @@ test('Windows installer preflights OpenSSH before changing the installation', as
   assert.doesNotMatch(installer, /Copy-Item \$config/)
   assert.match(installer, /\$targets = \$files/)
 })
+
+test('Windows installer configures shared internet and private bridge firewall without fixed gateway IP', async () => {
+const installer = await readFile(new URL('../install_gateway_bridge_windows.ps1', import.meta.url), 'utf8')
+assert.match(installer, /Start-Process powershell\.exe -Verb RunAs/)
+assert.match(installer, /HNetCfg\.HNetShare/)
+assert.match(installer, /EnableSharing\(0\)/)
+assert.match(installer, /EnableSharing\(1\)/)
+assert.match(installer, /Trim\('\{\}'\)/)
+assert.match(installer, /SagaNexus Gateway Bridge Discovery/)
+assert.match(installer, /LocalPort \$rule\.Ports/)
+assert.doesNotMatch(installer, /10\.42\.0\.126|10\.43\.0\.126|192\.168\.11\.20/)
+})

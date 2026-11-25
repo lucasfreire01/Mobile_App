@@ -1,4 +1,52 @@
 $ErrorActionPreference = 'Stop'
+$identity = [Security.Principal.WindowsIdentity]::GetCurrent()
+$principal = New-Object Security.Principal.WindowsPrincipal($identity)
+if (-not $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
+    $arguments = '-NoProfile -ExecutionPolicy Bypass -File "{0}"' -f $PSCommandPath
+    $process = Start-Process powershell.exe -Verb RunAs -ArgumentList $arguments -Wait -PassThru
+    exit $process.ExitCode
+}
+
+function Configure-BridgeNetworking {
+    $ethernet = @(Get-NetAdapter -Physical -ErrorAction Stop | Where-Object {
+        $_.Status -eq 'Up' -and $_.Name -match 'Ethernet|Local Area Connection'
+    })
+    $defaultRoute = Get-NetRoute -DestinationPrefix '0.0.0.0/0' -ErrorAction Stop |
+        Where-Object { $_.State -eq 'Alive' } | Sort-Object RouteMetric, InterfaceMetric
+    $internet = @($defaultRoute | Select-Object -First 1 | ForEach-Object {
+        Get-NetAdapter -InterfaceIndex $_.ifIndex -ErrorAction SilentlyContinue
+    })
+    if ($ethernet.Count -ne 1 -or $internet.Count -ne 1 -or $ethernet[0].ifIndex -eq $internet[0].ifIndex) {
+        throw 'Não foi possível identificar com segurança a Ethernet do gateway e a interface com internet. Conecte o gateway por Ethernet e tente novamente.'
+    }
+
+    $share = New-Object -ComObject HNetCfg.HNetShare
+    $connections = @($share.EnumEveryConnection())
+    $props = @{}
+    foreach ($connection in $connections) {
+        $guid = $share.NetConnectionProps($connection).Guid.ToString().Trim('{}').ToLowerInvariant()
+        $props[$guid] = $connection
+    }
+    $ethernetGuid = (Get-NetAdapter -InterfaceIndex $ethernet[0].ifIndex).InterfaceGuid.ToString('B')
+    $internetGuid = (Get-NetAdapter -InterfaceIndex $internet[0].ifIndex).InterfaceGuid.ToString('B')
+    $ethernetGuid = $ethernetGuid.Trim('{}').ToLowerInvariant()
+    $internetGuid = $internetGuid.Trim('{}').ToLowerInvariant()
+    if (-not $props.ContainsKey($ethernetGuid) -or -not $props.ContainsKey($internetGuid)) {
+        throw 'O Windows não expôs as interfaces para o compartilhamento de internet.'
+    }
+    $share.NetSharingConfiguration($props[$internetGuid]).EnableSharing(0)
+    $share.NetSharingConfiguration($props[$ethernetGuid]).EnableSharing(1)
+
+    foreach ($rule in @(
+        @{ Name = 'SagaNexus Gateway Bridge Discovery'; Ports = '8787' },
+        @{ Name = 'SagaNexus Gateway Bridge Tunnels'; Ports = '8800-8863' }
+    )) {
+        Remove-NetFirewallRule -DisplayName $rule.Name -ErrorAction SilentlyContinue
+        New-NetFirewallRule -DisplayName $rule.Name -Direction Inbound -Action Allow -Profile Private -Protocol TCP -LocalPort $rule.Ports | Out-Null
+    }
+}
+
+Configure-BridgeNetworking
 $source = Split-Path -Parent $MyInvocation.MyCommand.Path
 $installDir = Join-Path $env:LOCALAPPDATA 'SagaNexus\GatewayBridge'
 $requiredCommands = @('ssh.exe', 'ssh-keyscan.exe')
