@@ -46,7 +46,13 @@ function Configure-BridgeNetworking {
     }
 }
 
-Configure-BridgeNetworking
+try {
+    Configure-BridgeNetworking
+    Write-Output 'Compartilhamento e regras do Firewall configurados.'
+}
+catch {
+    Write-Warning ('Não foi possível configurar automaticamente o compartilhamento/Firewall: {0} A ponte continuará sendo instalada.' -f $_.Exception.Message)
+}
 $source = Split-Path -Parent $MyInvocation.MyCommand.Path
 $installDir = Join-Path $env:LOCALAPPDATA 'SagaNexus\GatewayBridge'
 $requiredCommands = @('ssh.exe', 'ssh-keyscan.exe')
