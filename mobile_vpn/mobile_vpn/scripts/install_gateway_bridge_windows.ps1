@@ -55,6 +55,7 @@ catch {
 }
 $source = Split-Path -Parent $MyInvocation.MyCommand.Path
 $installDir = Join-Path $env:LOCALAPPDATA 'SagaNexus\GatewayBridge'
+$installLog = Join-Path $installDir 'bridge.log'
 $requiredCommands = @('ssh.exe', 'ssh-keyscan.exe')
 foreach ($command in $requiredCommands) {
     if (-not (Get-Command $command -ErrorAction SilentlyContinue)) {
@@ -97,16 +98,31 @@ try {
     $committing = $true
     if ($previousTask) { Stop-ScheduledTask -TaskName $taskName }
     foreach ($file in $targets) { Move-Item (Join-Path $stage $file) (Join-Path $installDir $file) -Force }
+    $acl = Get-Acl $installDir
+    $acl.SetAccessRuleProtection($true, $false)
+    $acl.SetAccessRule((New-Object System.Security.AccessControl.FileSystemAccessRule($sid, 'FullControl', 'ContainerInherit,ObjectInherit', 'None', 'Allow')))
+    Set-Acl -Path $installDir -AclObject $acl
+    foreach ($file in $targets) { Set-Acl -Path (Join-Path $installDir $file) -AclObject $acl }
 
 $node = Join-Path $installDir 'node.exe'
 $bridge = Join-Path $installDir 'gateway_lan_bridge.ts'
-$arguments = '-NoProfile -NonInteractive -WindowStyle Hidden -Command "& ''{0}'' ''{1}''"' -f $node, $bridge
+$arguments = '-NoProfile -NonInteractive -ExecutionPolicy Bypass -Command "& ''{0}'' ''{1}'' *> ''{2}''"' -f $node, $bridge, $installLog
 $action = New-ScheduledTaskAction -Execute (Join-Path $PSHOME 'powershell.exe') -Argument $arguments
 $trigger = New-ScheduledTaskTrigger -AtLogOn -User $env:USERNAME
 $principal = New-ScheduledTaskPrincipal -UserId $env:USERNAME -LogonType Interactive -RunLevel Limited
 $settings = New-ScheduledTaskSettingsSet -StartWhenAvailable -RestartCount 3 -RestartInterval (New-TimeSpan -Seconds 10)
 Register-ScheduledTask -TaskName $taskName -Action $action -Trigger $trigger -Principal $principal -Settings $settings -Force | Out-Null
 Start-ScheduledTask -TaskName $taskName
+for ($attempt = 0; $attempt -lt 15; $attempt++) {
+    Start-Sleep -Seconds 1
+    $task = Get-ScheduledTask -TaskName $taskName -ErrorAction SilentlyContinue
+    $listening = Get-NetTCPConnection -LocalPort 8787 -State Listen -ErrorAction SilentlyContinue
+    if ($task.State -eq 'Running' -and $listening) { break }
+    if ($task.State -eq 'Ready' -and $attempt -ge 3) { throw "A ponte não iniciou. Consulte $installLog" }
+}
+if (-not (Get-NetTCPConnection -LocalPort 8787 -State Listen -ErrorAction SilentlyContinue)) {
+    throw "A ponte não abriu a porta 8787. Consulte $installLog"
+}
     $committing = $false
 }
 catch {
