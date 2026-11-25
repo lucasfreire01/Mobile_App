@@ -219,6 +219,15 @@ export async function prepareBridgeInstallation(path: string, request: typeof fe
   return { apiUrl, identity: { bridgeId: config.bridgeId, token: bridgeToken } }
 }
 
+export async function bootstrapBridgeInstallation(
+  path: string,
+  input: { apiUrl: string; bridgeId: string; installationToken: string },
+  request: typeof fetch = fetch,
+) {
+  await saveInstallation(path, input)
+  return prepareBridgeInstallation(path, request)
+}
+
 export class BridgePairingRelay {
   private base: string
   private options: Options

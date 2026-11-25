@@ -6,7 +6,7 @@ import net from 'node:net'
 import { execFileSync } from 'node:child_process'
 import { cpus, hostname, networkInterfaces, userInfo } from 'node:os'
 import { readFileSync } from 'node:fs'
-import { BridgePairingRelay, prepareBridgeInstallation } from './bridge_pairing_relay.ts'
+import { BridgePairingRelay, bootstrapBridgeInstallation, prepareBridgeInstallation } from './bridge_pairing_relay.ts'
 import { fileURLToPath } from 'node:url'
 
 type LocalIPv4Interface = { name: string; address: string; netmask: string }
@@ -249,11 +249,29 @@ await updatePairing(await initialInstallation)
 http
   .createServer((req, res) => {
     res.setHeader('Cache-Control', 'no-store')
-    if (
-      !allowed(req.socket.remoteAddress) ||
-      req.method !== 'GET' ||
-      req.url !== '/saganexus-discovery'
-    ) {
+    if (!allowed(req.socket.remoteAddress)) {
+      res.writeHead(404).end()
+      return
+    }
+    if (req.method === 'POST' && req.url === '/saganexus-bootstrap') {
+      let body = ''
+      req.on('data', (chunk) => {
+        body += chunk
+        if (body.length > 4096) req.destroy()
+      })
+      req.on('end', async () => {
+        try {
+          const input = JSON.parse(body)
+          const installation = await bootstrapBridgeInstallation(installationPath, input)
+          await updatePairing(installation)
+          res.writeHead(204).end()
+        } catch {
+          res.writeHead(400).end()
+        }
+      })
+      return
+    }
+    if (req.method !== 'GET' || req.url !== '/saganexus-discovery') {
       res.writeHead(404).end()
       return
     }

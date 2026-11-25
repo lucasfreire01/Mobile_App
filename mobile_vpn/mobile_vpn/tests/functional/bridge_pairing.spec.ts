@@ -156,7 +156,7 @@ test.group('Account-bound automatic bridge pairing', (group) => {
     await assert.rejects(() => service.registerBridge(2, bridgeId, publicKey))
   })
 
-  test('only an authenticated admin can provision a bridge', async ({ client }) => {
+  test('only an authenticated user can provision a bridge', async ({ client, assert }) => {
     const anonymous = await client.post('/api/v1/gateway-bridges')
     anonymous.assertStatus(401)
     const user = await User.create({
@@ -165,10 +165,15 @@ test.group('Account-bound automatic bridge pairing', (group) => {
       isAdmin: false,
     })
     const token = await User.accessTokens.create(user)
-    const forbidden = await client
+    const provisioned = await client
       .post('/api/v1/gateway-bridges')
       .header('authorization', `Bearer ${token.value!.release()}`)
-    forbidden.assertStatus(403)
+    provisioned.assertStatus(201)
+    provisioned.assertHeader('cache-control', 'no-store')
+    assert.match(
+      (provisioned.body() as unknown as { installationToken: string }).installationToken,
+      /^[A-Za-z0-9_-]{43}$/
+    )
   })
 
   test('unregistered, pending, and forged bridge credentials cannot create sessions', async ({

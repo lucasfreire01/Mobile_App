@@ -142,6 +142,33 @@ export async function discoverLocalBridges(
   return probeHosts(hosts, (host) => discoverBridge(host, timeoutMs), onFound);
 }
 
+export async function bootstrapLocalBridge(
+  bridge: LocalBridge,
+  apiUrl: string,
+  apiFetch: (url: string, options?: RequestInit) => Promise<Response>,
+  signal?: AbortSignal,
+): Promise<LocalBridge> {
+  const response = await apiFetch(`${apiUrl}/gateway-bridges`, { method: "POST", signal });
+  const grant = await response.json().catch(() => null);
+  if (!response.ok || typeof grant?.bridgeId !== "string" || typeof grant?.installationToken !== "string") {
+    throw new Error("Não foi possível ativar a ponte neste PC.");
+  }
+  const local = await fetch(`http://${bridge.host}:8787/saganexus-bootstrap`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ apiUrl, bridgeId: grant.bridgeId, installationToken: grant.installationToken }),
+    signal,
+  });
+  if (!local.ok) throw new Error("A ponte recusou a ativação neste PC.");
+  for (let attempt = 0; attempt < 8; attempt += 1) {
+    const activated = await discoverLocalBridges([bridge.host], 1200);
+    const current = activated[0];
+    if (current?.pairing) return current;
+    await new Promise((resolve) => setTimeout(resolve, 500));
+  }
+  throw new Error("A ponte foi ativada, mas ainda não abriu uma sessão de pareamento.");
+}
+
 /** Find gateways only through the external PC bridge on HTTP :8787. */
 export async function discoverLocalGateways(
   ips: string[],

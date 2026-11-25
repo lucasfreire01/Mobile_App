@@ -17,6 +17,7 @@ import { router, usePreventRemove } from "expo-router";
 import * as Network from "expo-network";
 import {
   buildLocalBridgeCandidates,
+  bootstrapLocalBridge,
   discoverLocalBridges,
   type LocalBridge,
   type LocalGateway,
@@ -53,7 +54,7 @@ export default function NewGatewayScreen() {
 
   async function startPairing() {
     if (pairingRequest.current) return;
-    if (!selectedBridge?.pairing || !selectedGateway || !gatewayId || !enrollmentCode) {
+    if (!selectedBridge || !selectedGateway || !gatewayId || !enrollmentCode) {
       setPairingStatus("error");
       setPairingError("Selecione um PC com a ponte atualizada e o gateway conectado antes de parear.");
       return;
@@ -64,6 +65,11 @@ export default function NewGatewayScreen() {
     setPairingError(null);
     setPairingEvents([]);
     try {
+      let bridge = selectedBridge;
+      if (!bridge.pairing) {
+        bridge = await bootstrapLocalBridge(bridge, getApiUrl(), apiFetch, controller.signal);
+        setSelectedBridge(bridge);
+      }
       const renewal = await apiFetch(`${getApiUrl()}/gateways/${gatewayId}/enrollment/renew`, { method: "POST" });
       const renewalBody = await renewal.json().catch(() => null);
       if (!renewal.ok || typeof renewalBody?.enrollmentCode !== "string") {
@@ -71,7 +77,7 @@ export default function NewGatewayScreen() {
       }
       setEnrollmentCode(renewalBody.enrollmentCode);
       await pairGateway({
-        apiUrl: getApiUrl(), apiFetch, session: selectedBridge.pairing,
+        apiUrl: getApiUrl(), apiFetch, session: bridge.pairing!,
         gatewayId, gatewayMac: selectedGateway.mac,
         enrollmentCode: renewalBody.enrollmentCode, signal: controller.signal,
         onPending: () => {
@@ -265,8 +271,8 @@ export default function NewGatewayScreen() {
                 </Text>
               </View>
               {pairingStatus !== "pending" && pairingStatus !== "paired" ? <Text className="text-sm leading-5 text-slate-600">Confira o gateway selecionado e toque em parear. A ponte faz a conexão automaticamente.</Text> : null}
-              {!selectedBridge?.pairing && pairingStatus !== "pending" && pairingStatus !== "paired" ? <Text accessibilityRole="alert" className="text-sm leading-5 text-amber-800">A ponte deste PC ainda não está disponível para pareamento. Tente buscar novamente.</Text> : null}
-              <Pressable accessibilityRole="button" disabled={pairingBusy || pairingStatus === "paired" || pairingStatus === "pending" || !selectedBridge?.pairing || !selectedGateway} onPress={() => void startPairing()} className={`min-h-12 items-center justify-center rounded-xl px-3 ${pairingBusy || pairingStatus === "paired" || pairingStatus === "pending" || !selectedBridge?.pairing || !selectedGateway ? "bg-slate-300" : "bg-brand-blue"}`}>
+              {!selectedBridge?.pairing && pairingStatus !== "pending" && pairingStatus !== "paired" ? <Text className="text-sm leading-5 text-amber-800">A ponte será ativada automaticamente ao iniciar o pareamento.</Text> : null}
+              <Pressable accessibilityRole="button" disabled={pairingBusy || pairingStatus === "paired" || pairingStatus === "pending" || !selectedBridge || !selectedGateway} onPress={() => void startPairing()} className={`min-h-12 items-center justify-center rounded-xl px-3 ${pairingBusy || pairingStatus === "paired" || pairingStatus === "pending" || !selectedBridge || !selectedGateway ? "bg-slate-300" : "bg-brand-blue"}`}>
                 <Text className="text-center font-semibold text-white">{pairingBusy ? "Pareando…" : pairingStatus === "pending" ? "Recebimento confirmado" : pairingStatus === "paired" ? "Pareamento concluído" : "Parear gateway"}</Text>
               </Pressable>
               {pairingStatus === "pending" ? <Text accessibilityLiveRegion="polite" className="text-sm leading-5 text-slate-600">O gateway recebeu o pareamento. A confirmação online pode levar mais tempo. Acompanhe pela lista de gateways; não é necessário parear novamente.</Text> : null}

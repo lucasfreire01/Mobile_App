@@ -25,7 +25,13 @@ router
 
 router
   .group(() => {
-    router.post('gateway-bridges', [bridgePairings, 'provision'])
+    router.post('gateway-bridges', [bridgePairings, 'provision']).use(gatewayProvisioningThrottle)
+  })
+  .use(middleware.auth())
+  .prefix('/api/v1')
+
+router
+  .group(() => {
     router.delete('gateway-bridges/:id', [bridgePairings, 'revoke'])
     router.post('gateway-bridge-sessions/:id/approve', [bridgePairings, 'approve'])
     router.get('gateway-bridge-sessions/:id', [bridgePairings, 'show'])
