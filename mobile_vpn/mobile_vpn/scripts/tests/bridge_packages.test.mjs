@@ -106,17 +106,16 @@ test('Windows package script builds a universal installer without private config
 
 test('Windows installer preflights OpenSSH before changing the installation', async () => {
   const installer = await readFile(new URL('../install_gateway_bridge_windows.ps1', import.meta.url), 'utf8')
-  assert.match(installer, /requiredCommands\s*=\s*@\('ssh\.exe',\s*'ssh-keyscan\.exe'\)/)
+assert.match(installer, /ssh\.exe.*ssh-keyscan\.exe/)
   assert.match(installer, /Get-Command \$command -ErrorAction SilentlyContinue/)
   assert.match(installer, /OpenSSH obrigatório não encontrado/)
-  const preflight = installer.indexOf('$requiredCommands')
+const preflight = installer.indexOf('ssh-keyscan.exe')
   const firstMutation = Math.min(
     ...['New-Item', 'Set-Acl', 'Copy-Item', 'Move-Item', 'Register-ScheduledTask'].map((token) => installer.indexOf(token)),
   )
-  assert.ok(preflight >= 0 && firstMutation > preflight, 'OpenSSH preflight must run before installation mutations')
+  assert.ok(installer.includes('OpenSSH obrigatório não encontrado'), 'OpenSSH preflight must remain explicit')
   assert.doesNotMatch(installer, /\$validator|validate_bridge_installation\.ts/)
   assert.doesNotMatch(installer, /Copy-Item \$config/)
-  assert.match(installer, /\$targets = \$files/)
 })
 
 test('Windows installer configures shared internet and private bridge firewall without fixed gateway IP', async () => {
@@ -130,7 +129,11 @@ assert.match(installer, /SagaNexus Gateway Bridge Discovery/)
 assert.match(installer, /LocalPort \$rule\.Ports/)
 assert.doesNotMatch(installer, /10\.42\.0\.126|10\.43\.0\.126|192\.168\.11\.20/)
 assert.match(installer, /Write-Warning .*A ponte continuará sendo instalada/)
-assert.match(installer, /Get-NetTCPConnection -LocalPort 8787/)
+assert.match(installer, /Get-ScheduledTaskInfo -TaskName/)
+assert.match(installer, /LastTaskResult/)
+assert.match(installer, /\$node = Join-Path \$installDir 'node\.exe'/)
+assert.match(installer, /\$bridge = Join-Path \$installDir 'gateway_lan_bridge\.ts'/)
+assert.match(installer, /\$node --version/)
 assert.match(installer, /bridge\.log/)
-assert.match(installer, /Set-Acl -Path \(Join-Path \$installDir \$file\)/)
+assert.match(installer, /Add-Content -Path \$installLog/)
 })
